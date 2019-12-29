@@ -11,11 +11,29 @@ pub trait SkipAheadIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> {
 
     /// Advance this iterator to the next item after the given item and
     /// return a pointer to this iterator.
-    fn advance_past(&mut self, t: &T) -> &mut Self;
+    fn advance_past(&mut self, t: &T) -> &mut Self {
+        while let Some(item) = self.peek() {
+            if t >= item {
+                self.next();
+            } else {
+                break;
+            }
+        }
+        self
+    }
 
     /// Advance this iterator to the next item at or after the given item and
     /// return a pointer to this iterator.
-    fn advance_until(&mut self, t: &T) -> &mut Self;
+    fn advance_until(&mut self, t: &T) -> &mut Self {
+        while let Some(item) = self.peek() {
+            if t > item {
+                self.next();
+            } else {
+                break;
+            }
+        }
+        self
+    }
 }
 
 pub trait IterSetRelations<'a, T>: SkipAheadIterator<'a, T> + Sized
@@ -120,8 +138,55 @@ pub enum SetOperationType {
 
 #[cfg(test)]
 mod tests {
+    use crate::{IterSetRelations, SkipAheadIterator};
+
+    struct SkipAheadIter<I: Iterator> {
+        iter: I,
+        peeked: Option<Option<I::Item>>,
+    }
+
+    impl<I: Iterator> SkipAheadIter<I> {
+        pub fn new(iter: I) -> Self {
+            Self { iter, peeked: None }
+        }
+    }
+
+    impl<I: Iterator> Iterator for SkipAheadIter<I> {
+        type Item = I::Item;
+
+        fn next(&mut self) -> Option<I::Item> {
+            match self.peeked.take() {
+                Some(item) => item,
+                None => self.iter.next(),
+            }
+        }
+    }
+
+    impl<'a, T, I> SkipAheadIterator<'a, T> for SkipAheadIter<I>
+    where
+        T: Ord + 'a,
+        I: Iterator<Item = &'a T>,
+    {
+        fn peek(&mut self) -> Option<&'a T> {
+            let iter = &mut self.iter;
+            *self.peeked.get_or_insert_with(|| iter.next())
+        }
+    }
+
+    impl<'a, T, I> IterSetRelations<'a, T> for SkipAheadIter<I>
+    where
+        T: Ord + 'a,
+        I: Iterator<Item = &'a T>,
+    {
+    }
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn set_relations() {
+        let iter1 = SkipAheadIter::new(["a", "b", "c", "d"].iter());
+        let iter2 = SkipAheadIter::new(["b", "c", "d"].iter());
+        assert!(iter1.is_superset(iter2));
+        let iter1 = SkipAheadIter::new(["a", "b", "c", "d"].iter());
+        let iter2 = SkipAheadIter::new(["b", "c", "d"].iter());
+        assert!(!iter1.is_subset(iter2));
     }
 }
