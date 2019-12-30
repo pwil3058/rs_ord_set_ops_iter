@@ -245,6 +245,161 @@ where
     }
 }
 
+impl<'a, T, L, R> SkipAheadIterator<'a, T> for SetOperationIter<'a, T, L, R>
+where
+    T: 'a + Ord,
+    L: SkipAheadIterator<'a, T>,
+    R: SkipAheadIterator<'a, T>,
+{
+    fn peek(&mut self) -> Option<&'a T> {
+        use SetOperationIter::*;
+        match self {
+            Difference(l_iter, r_iter) => {
+                while let Some(l_item) = l_iter.peek() {
+                    if let Some(r_item) = r_iter.peek() {
+                        match l_item.cmp(r_item) {
+                            Ordering::Less => {
+                                return Some(l_item);
+                            }
+                            Ordering::Greater => {
+                                r_iter.advance_until(l_item);
+                            }
+                            Ordering::Equal => {
+                                l_iter.next();
+                                r_iter.next();
+                            }
+                        }
+                    } else {
+                        return Some(l_item);
+                    }
+                }
+                None
+            }
+            Intersection(l_iter, r_iter) => {
+                if let Some(l_item) = l_iter.peek() {
+                    if let Some(r_item) = r_iter.peek() {
+                        match l_item.cmp(r_item) {
+                            Ordering::Less => {
+                                l_iter.advance_until(r_item);
+                                l_iter.peek()
+                            }
+                            Ordering::Greater => {
+                                r_iter.advance_until(l_item);
+                                r_iter.peek()
+                            }
+                            Ordering::Equal => Some(l_item),
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            SymmetricDifference(l_iter, r_iter) => {
+                while let Some(l_item) = l_iter.peek() {
+                    if let Some(r_item) = r_iter.peek() {
+                        match l_item.cmp(r_item) {
+                            Ordering::Less => {
+                                return Some(l_item);
+                            }
+                            Ordering::Greater => {
+                                return Some(r_item);
+                            }
+                            Ordering::Equal => {
+                                l_iter.next();
+                                r_iter.next();
+                            }
+                        }
+                    } else {
+                        return Some(l_item);
+                    }
+                }
+                r_iter.peek()
+            }
+            Union(l_iter, r_iter) => {
+                if let Some(l_item) = l_iter.peek() {
+                    if let Some(r_item) = r_iter.peek() {
+                        match l_item.cmp(r_item) {
+                            Ordering::Less | Ordering::Equal => Some(l_item),
+                            Ordering::Greater => Some(r_item),
+                        }
+                    } else {
+                        Some(l_item)
+                    }
+                } else {
+                    r_iter.peek()
+                }
+            }
+            Bogus(_) => panic!("'Bogus' should never be used"),
+        }
+    }
+
+    fn advance_past(&mut self, t: &T) -> &mut Self {
+        use SetOperationIter::*;
+        match self {
+            Difference(l_iter, r_iter) => {
+                l_iter.advance_past(t);
+                r_iter.advance_past(t);
+            }
+            Intersection(l_iter, r_iter) => {
+                l_iter.advance_past(t);
+                r_iter.advance_past(t);
+            }
+            SymmetricDifference(l_iter, r_iter) => {
+                l_iter.advance_past(t);
+                r_iter.advance_past(t);
+            }
+            Union(l_iter, r_iter) => {
+                l_iter.advance_past(t);
+                r_iter.advance_past(t);
+            }
+            Bogus(_) => panic!("'Bogus' should never be used"),
+        };
+        self
+    }
+
+    fn advance_until(&mut self, t: &T) -> &mut Self {
+        use SetOperationIter::*;
+        match self {
+            Difference(l_iter, r_iter) => {
+                l_iter.advance_until(t);
+                r_iter.advance_until(t);
+            }
+            Intersection(l_iter, r_iter) => {
+                l_iter.advance_until(t);
+                r_iter.advance_until(t);
+            }
+            SymmetricDifference(l_iter, r_iter) => {
+                l_iter.advance_until(t);
+                r_iter.advance_until(t);
+            }
+            Union(l_iter, r_iter) => {
+                l_iter.advance_until(t);
+                r_iter.advance_until(t);
+            }
+            Bogus(_) => panic!("'Bogus' should never be used"),
+        };
+        self
+    }
+}
+
+impl<'a, T, L, R> IterSetRelations<'a, T> for SetOperationIter<'a, T, L, R>
+where
+    T: Ord + 'a,
+    L: SkipAheadIterator<'a, T>,
+    R: SkipAheadIterator<'a, T>,
+{
+}
+
+impl<'a, T, L, R> IterSetOperations<'a, T> for SetOperationIter<'a, T, L, R>
+where
+    T: Ord + 'a,
+    L: SkipAheadIterator<'a, T>,
+    R: SkipAheadIterator<'a, T>,
+{
+}
+
 pub trait IterSetOperations<'a, T>: SkipAheadIterator<'a, T> + Sized
 where
     T: 'a + Ord,
