@@ -10,21 +10,9 @@ pub trait SkipAheadIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> {
     /// Peek at the next item in the iterator without advancing the iterator.
     fn peek(&mut self) -> Option<&'a T>;
 
-    /// Advance this iterator to the next item after the given item and
-    /// return a pointer to this iterator.
-    fn advance_past(&mut self, t: &T) -> &mut Self {
-        while let Some(item) = self.peek() {
-            if t >= item {
-                self.next();
-            } else {
-                break;
-            }
-        }
-        self
-    }
-
     /// Advance this iterator to the next item at or after the given item and
-    /// return a pointer to this iterator.
+    /// return a pointer to this iterator. Default implementation is O(n) but
+    /// custom built implementations could be as good as O(log(n)).
     fn advance_until(&mut self, t: &T) -> &mut Self {
         while let Some(item) = self.peek() {
             if t > item {
@@ -333,30 +321,6 @@ where
             }
             Bogus(_) => panic!("'Bogus' should never be used"),
         }
-    }
-
-    fn advance_past(&mut self, t: &T) -> &mut Self {
-        use SetOperationIter::*;
-        match self {
-            Difference(l_iter, r_iter) => {
-                l_iter.advance_past(t);
-                r_iter.advance_past(t);
-            }
-            Intersection(l_iter, r_iter) => {
-                l_iter.advance_past(t);
-                r_iter.advance_past(t);
-            }
-            SymmetricDifference(l_iter, r_iter) => {
-                l_iter.advance_past(t);
-                r_iter.advance_past(t);
-            }
-            Union(l_iter, r_iter) => {
-                l_iter.advance_past(t);
-                r_iter.advance_past(t);
-            }
-            Bogus(_) => panic!("'Bogus' should never be used"),
-        };
-        self
     }
 
     fn advance_until(&mut self, t: &T) -> &mut Self {
