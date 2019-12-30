@@ -25,10 +25,40 @@ pub trait SkipAheadIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> {
     }
 }
 
-pub trait IterSetRelations<'a, T>: SkipAheadIterator<'a, T> + Sized
-where
-    T: 'a + Ord,
+
+pub trait IterSetOperations<'a, T>: SkipAheadIterator<'a, T> + Sized
+    where
+        T: 'a + Ord,
 {
+    /// Iterate over the set difference of this Iterator and the given Iterator
+    /// in the order defined by their elements `Ord` trait implementation.
+    fn difference<I: SkipAheadIterator<'a, T>>(self, iter: I) -> SetOperationIter<'a, T, Self, I> {
+        SetOperationIter::Difference(self, iter)
+    }
+
+    /// Iterate over the set intersection of this Iterator and the given Iterator
+    /// in the order defined by their elements `Ord` trait implementation.
+    fn intersection<I: SkipAheadIterator<'a, T>>(
+        self,
+        iter: I,
+    ) -> SetOperationIter<'a, T, Self, I> {
+        SetOperationIter::Intersection(self, iter)
+    }
+    /// Iterate over the set difference of this Iterator and the given Iterator
+    /// in the order defined by their elements `Ord` trait implementation.
+    fn symmetric_difference<I: SkipAheadIterator<'a, T>>(
+        self,
+        iter: I,
+    ) -> SetOperationIter<'a, T, Self, I> {
+        SetOperationIter::SymmetricDifference(self, iter)
+    }
+
+    /// Iterate over the set union of this Iterator and the given Iterator
+    /// in the order defined by their elements `Ord` trait implementation.
+    fn union<I: SkipAheadIterator<'a, T>>(self, iter: I) -> SetOperationIter<'a, T, Self, I> {
+        SetOperationIter::Union(self, iter)
+    }
+
     /// Is the output of the given Iterator disjoint from the output of
     /// this iterator?
     fn is_disjoint<I: SkipAheadIterator<'a, T>>(mut self, mut other: I) -> bool {
@@ -83,7 +113,7 @@ where
 
     /// Is the output of the given Iterator a proper superset of the output of
     /// this iterator?
-    fn is_proper_superset<I: IterSetRelations<'a, T>>(self, other: I) -> bool {
+    fn is_proper_superset<I: IterSetOperations<'a, T>>(self, other: I) -> bool {
         other.is_proper_subset(self)
     }
 
@@ -113,7 +143,7 @@ where
 
     /// Is the output of the given Iterator a superset of the output of
     /// this iterator?
-    fn is_superset<I: IterSetRelations<'a, T>>(self, other: I) -> bool {
+    fn is_superset<I: IterSetOperations<'a, T>>(self, other: I) -> bool {
         other.is_subset(self)
     }
 }
@@ -348,14 +378,6 @@ where
     }
 }
 
-impl<'a, T, L, R> IterSetRelations<'a, T> for SetOperationIter<'a, T, L, R>
-where
-    T: Ord + 'a,
-    L: SkipAheadIterator<'a, T>,
-    R: SkipAheadIterator<'a, T>,
-{
-}
-
 impl<'a, T, L, R> IterSetOperations<'a, T> for SetOperationIter<'a, T, L, R>
 where
     T: Ord + 'a,
@@ -364,43 +386,9 @@ where
 {
 }
 
-pub trait IterSetOperations<'a, T>: SkipAheadIterator<'a, T> + Sized
-where
-    T: 'a + Ord,
-{
-    /// Iterate over the set difference of this Iterator and the given Iterator
-    /// in the order defined by their elements `Ord` trait implementation.
-    fn difference<I: SkipAheadIterator<'a, T>>(self, iter: I) -> SetOperationIter<'a, T, Self, I> {
-        SetOperationIter::Difference(self, iter)
-    }
-
-    /// Iterate over the set intersection of this Iterator and the given Iterator
-    /// in the order defined by their elements `Ord` trait implementation.
-    fn intersection<I: SkipAheadIterator<'a, T>>(
-        self,
-        iter: I,
-    ) -> SetOperationIter<'a, T, Self, I> {
-        SetOperationIter::Intersection(self, iter)
-    }
-    /// Iterate over the set difference of this Iterator and the given Iterator
-    /// in the order defined by their elements `Ord` trait implementation.
-    fn symmetric_difference<I: SkipAheadIterator<'a, T>>(
-        self,
-        iter: I,
-    ) -> SetOperationIter<'a, T, Self, I> {
-        SetOperationIter::SymmetricDifference(self, iter)
-    }
-
-    /// Iterate over the set union of this Iterator and the given Iterator
-    /// in the order defined by their elements `Ord` trait implementation.
-    fn union<I: SkipAheadIterator<'a, T>>(self, iter: I) -> SetOperationIter<'a, T, Self, I> {
-        SetOperationIter::Union(self, iter)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::{IterSetOperations, IterSetRelations, SkipAheadIterator};
+    use crate::{IterSetOperations, SkipAheadIterator};
 
     struct SkipAheadIter<I: Iterator> {
         iter: I,
@@ -433,13 +421,6 @@ mod tests {
             let iter = &mut self.iter;
             *self.peeked.get_or_insert_with(|| iter.next())
         }
-    }
-
-    impl<'a, T, I> IterSetRelations<'a, T> for SkipAheadIter<I>
-    where
-        T: Ord + 'a,
-        I: Iterator<Item = &'a T>,
-    {
     }
 
     impl<'a, T, I> IterSetOperations<'a, T> for SkipAheadIter<I>
