@@ -1,6 +1,7 @@
 // Copyright 2019 Peter Williams <pwil3058@gmail.com> <pwil3058@bigpond.net.au>
 
 use std::cmp::Ordering;
+use std::marker::PhantomData;
 
 /// Iterator enhancement to provide peek and advance ahead features. This mechanism
 /// is used to optimise implementation of set operation (difference, intersection, etc)
@@ -129,16 +130,158 @@ where
     }
 }
 
-pub enum SetOperationType {
-    Difference,
-    Intersection,
-    SymmetricDifference,
-    Union,
+pub enum SetOperationIter<'a, T, L, R>
+where
+    T: 'a + Ord,
+    L: SkipAheadIterator<'a, T>,
+    R: SkipAheadIterator<'a, T>,
+{
+    Difference(L, R),
+    Intersection(L, R),
+    SymmetricDifference(L, R),
+    Union(L, R),
+    Bogus(PhantomData<&'a T>),
+}
+
+impl<'a, T, L, R> Iterator for SetOperationIter<'a, T, L, R>
+where
+    T: 'a + Ord,
+    L: SkipAheadIterator<'a, T>,
+    R: SkipAheadIterator<'a, T>,
+{
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use SetOperationIter::*;
+        match self {
+            Difference(l_iter, r_iter) => {
+                while let Some(l_item) = l_iter.peek() {
+                    if let Some(r_item) = r_iter.peek() {
+                        match l_item.cmp(r_item) {
+                            Ordering::Less => {
+                                return l_iter.next();
+                            }
+                            Ordering::Greater => {
+                                r_iter.advance_until(l_item);
+                            }
+                            Ordering::Equal => {
+                                l_iter.next();
+                                r_iter.next();
+                            }
+                        }
+                    } else {
+                        return l_iter.next();
+                    }
+                }
+                None
+            }
+            Intersection(l_iter, r_iter) => {
+                if let Some(l_item) = l_iter.peek() {
+                    if let Some(r_item) = r_iter.peek() {
+                        match l_item.cmp(r_item) {
+                            Ordering::Less => {
+                                l_iter.advance_until(r_item);
+                                r_iter.next();
+                                l_iter.next()
+                            }
+                            Ordering::Greater => {
+                                r_iter.advance_until(l_item);
+                                l_iter.next();
+                                r_iter.next()
+                            }
+                            Ordering::Equal => {
+                                r_iter.next();
+                                l_iter.next()
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            SymmetricDifference(l_iter, r_iter) => {
+                while let Some(l_item) = l_iter.peek() {
+                    if let Some(r_item) = r_iter.peek() {
+                        match l_item.cmp(r_item) {
+                            Ordering::Less => {
+                                return l_iter.next();
+                            }
+                            Ordering::Greater => {
+                                return r_iter.next();
+                            }
+                            Ordering::Equal => {
+                                l_iter.next();
+                                r_iter.next();
+                            }
+                        }
+                    } else {
+                        return l_iter.next();
+                    }
+                }
+                r_iter.next()
+            }
+            Union(l_iter, r_iter) => {
+                if let Some(l_item) = l_iter.peek() {
+                    if let Some(r_item) = r_iter.peek() {
+                        match l_item.cmp(r_item) {
+                            Ordering::Less => l_iter.next(),
+                            Ordering::Greater => r_iter.next(),
+                            Ordering::Equal => {
+                                r_iter.next();
+                                l_iter.next()
+                            }
+                        }
+                    } else {
+                        l_iter.next()
+                    }
+                } else {
+                    r_iter.next()
+                }
+            }
+            Bogus(_) => panic!("'Bogus' should never be used"),
+        }
+    }
+}
+
+pub trait IterSetOperations<'a, T>: SkipAheadIterator<'a, T> + Sized
+where
+    T: 'a + Ord,
+{
+    /// Iterate over the set difference of this Iterator and the given Iterator
+    /// in the order defined by their elements `Ord` trait implementation.
+    fn difference<I: SkipAheadIterator<'a, T>>(self, iter: I) -> SetOperationIter<'a, T, Self, I> {
+        SetOperationIter::Difference(self, iter)
+    }
+
+    /// Iterate over the set intersection of this Iterator and the given Iterator
+    /// in the order defined by their elements `Ord` trait implementation.
+    fn intersection<I: SkipAheadIterator<'a, T>>(
+        self,
+        iter: I,
+    ) -> SetOperationIter<'a, T, Self, I> {
+        SetOperationIter::Intersection(self, iter)
+    }
+    /// Iterate over the set difference of this Iterator and the given Iterator
+    /// in the order defined by their elements `Ord` trait implementation.
+    fn symmetric_difference<I: SkipAheadIterator<'a, T>>(
+        self,
+        iter: I,
+    ) -> SetOperationIter<'a, T, Self, I> {
+        SetOperationIter::SymmetricDifference(self, iter)
+    }
+
+    /// Iterate over the set union of this Iterator and the given Iterator
+    /// in the order defined by their elements `Ord` trait implementation.
+    fn union<I: SkipAheadIterator<'a, T>>(self, iter: I) -> SetOperationIter<'a, T, Self, I> {
+        SetOperationIter::Union(self, iter)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{IterSetRelations, SkipAheadIterator};
+    use crate::{IterSetOperations, IterSetRelations, SkipAheadIterator};
 
     struct SkipAheadIter<I: Iterator> {
         iter: I,
@@ -180,6 +323,13 @@ mod tests {
     {
     }
 
+    impl<'a, T, I> IterSetOperations<'a, T> for SkipAheadIter<I>
+    where
+        T: Ord + 'a,
+        I: Iterator<Item = &'a T>,
+    {
+    }
+
     #[test]
     fn set_relations() {
         let iter1 = SkipAheadIter::new(["a", "b", "c", "d"].iter());
@@ -188,5 +338,77 @@ mod tests {
         let iter1 = SkipAheadIter::new(["a", "b", "c", "d"].iter());
         let iter2 = SkipAheadIter::new(["b", "c", "d"].iter());
         assert!(!iter1.is_subset(iter2));
+    }
+
+    #[test]
+    fn set_difference() {
+        assert_eq!(
+            vec!["a"],
+            SkipAheadIter::new(["a", "b", "c", "d"].iter())
+                .difference(SkipAheadIter::new(["b", "c", "d", "e"].iter()))
+                .map(|v| *v)
+                .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec![0],
+            SkipAheadIter::new([0, 1, 2, 3].iter())
+                .difference(SkipAheadIter::new([1, 2, 3, 4, 5].iter()))
+                .cloned()
+                .collect::<Vec<i32>>()
+        );
+    }
+
+    #[test]
+    fn set_intersection() {
+        assert_eq!(
+            vec!["b", "c", "d"],
+            SkipAheadIter::new(["a", "b", "c", "d"].iter())
+                .intersection(SkipAheadIter::new(["b", "c", "d", "e"].iter()))
+                .map(|v| *v)
+                .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec![1, 2, 3],
+            SkipAheadIter::new([0, 1, 2, 3].iter())
+                .intersection(SkipAheadIter::new([1, 2, 3, 4, 5].iter()))
+                .cloned()
+                .collect::<Vec<i32>>()
+        );
+    }
+
+    #[test]
+    fn set_symmetric_difference() {
+        assert_eq!(
+            vec!["a", "e"],
+            SkipAheadIter::new(["a", "b", "c", "d"].iter())
+                .symmetric_difference(SkipAheadIter::new(["b", "c", "d", "e"].iter()))
+                .map(|v| *v)
+                .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec![0, 4, 5],
+            SkipAheadIter::new([0, 1, 2, 3].iter())
+                .symmetric_difference(SkipAheadIter::new([1, 2, 3, 4, 5].iter()))
+                .cloned()
+                .collect::<Vec<i32>>()
+        );
+    }
+
+    #[test]
+    fn set_union() {
+        assert_eq!(
+            vec!["a", "b", "c", "d", "e"],
+            SkipAheadIter::new(["a", "b", "c", "d"].iter())
+                .union(SkipAheadIter::new(["b", "c", "d", "e"].iter()))
+                .map(|v| *v)
+                .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec![0, 1, 2, 3, 4, 5],
+            SkipAheadIter::new([0, 1, 2, 3].iter())
+                .union(SkipAheadIter::new([1, 2, 3, 4, 5].iter()))
+                .cloned()
+                .collect::<Vec<i32>>()
+        );
     }
 }
