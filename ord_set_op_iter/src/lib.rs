@@ -113,8 +113,28 @@ pub trait IterSetOperations<'a, T>: SkipAheadIterator<'a, T> + Sized
 
     /// Is the output of the given Iterator a proper superset of the output of
     /// this iterator?
-    fn is_proper_superset<I: IterSetOperations<'a, T>>(self, other: I) -> bool {
-        other.is_proper_subset(self)
+    fn is_proper_superset<I: SkipAheadIterator<'a, T>>(mut self, mut other: I) -> bool {
+        let mut result = false;
+        while let Some(my_item) = self.peek() {
+            if let Some(other_item) = other.peek() {
+                match my_item.cmp(&other_item) {
+                    Ordering::Less => {
+                        result = true;
+                        self.advance_until(other_item);
+                    }
+                    Ordering::Greater => {
+                        return false;
+                    }
+                    Ordering::Equal => {
+                        other.next();
+                        self.next();
+                    }
+                }
+            } else {
+                return false;
+            }
+        }
+        result
     }
 
     /// Is the output of the given Iterator a subset of the output of
@@ -143,8 +163,26 @@ pub trait IterSetOperations<'a, T>: SkipAheadIterator<'a, T> + Sized
 
     /// Is the output of the given Iterator a superset of the output of
     /// this iterator?
-    fn is_superset<I: IterSetOperations<'a, T>>(self, other: I) -> bool {
-        other.is_subset(self)
+    fn is_superset<I: SkipAheadIterator<'a, T>>(mut self, mut other: I) -> bool {
+        while let Some(my_item) = self.peek() {
+            if let Some(other_item) = other.peek() {
+                match my_item.cmp(&other_item) {
+                    Ordering::Less => {
+                        self.advance_until(other_item);
+                    }
+                    Ordering::Greater => {
+                        return false;
+                    }
+                    Ordering::Equal => {
+                        other.next();
+                        self.next();
+                    }
+                }
+            } else {
+                return false;
+            }
+        }
+        true
     }
 }
 
