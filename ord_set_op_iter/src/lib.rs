@@ -586,10 +586,77 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{AdvanceUntilIter, IterSetOperations};
+    use crate::{AdvanceUntilIter, IterSetOperations, SkipAheadIterator};
+    use std::clone::Clone;
+
+    struct Set<T: Ord>(Vec<T>);
+
+    impl<T: Ord + Clone> From<Vec<T>> for Set<T> {
+        fn from(mut elements: Vec<T>) -> Self {
+            elements.sort();
+            elements.dedup();
+            Self(elements)
+        }
+    }
+
+    struct SetIter<'a, T: Ord> {
+        elements: &'a [T],
+        index: usize,
+    }
+
+    impl<'a, T: Ord> Iterator for SetIter<'a, T> {
+        type Item = &'a T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            if let Some(element) = self.elements.get(self.index) {
+                self.index += 1;
+                Some(element)
+            } else {
+                None
+            }
+        }
+    }
+
+    impl<'a, T: 'a + Ord> SkipAheadIterator<'a, T> for SetIter<'a, T> {
+        fn advance_until(&mut self, t: &T) -> &mut Self {
+            self.index += match self.elements[self.index..].binary_search(t) {
+                Ok(index) => index,
+                Err(index) => index,
+            };
+            self
+        }
+
+        fn peek(&mut self) -> Option<&'a T> {
+            self.elements.get(self.index)
+        }
+    }
+
+    impl<'a, T: Ord + 'a> IterSetOperations<'a, T> for SetIter<'a, T> {}
+
+    impl<T: Ord> Set<T> {
+        pub fn iter(&self) -> SetIter<T> {
+            SetIter {
+                elements: &self.0,
+                index: 0,
+            }
+        }
+
+        pub fn is_superset(&self, other: &Self) -> bool {
+            self.iter().is_superset(other.iter())
+        }
+
+        pub fn is_subset(&self, other: &Self) -> bool {
+            self.iter().is_subset(other.iter())
+        }
+    }
 
     #[test]
     fn set_relations() {
+        let set1 = Set::<&str>::from(vec!["a", "b", "c", "d"]);
+        let set2 = Set::<&str>::from(vec!["b", "c", "d"]);
+        assert!(set1.is_superset(&set2));
+        assert!(!set1.is_subset(&set2));
+
         let iter1 = AdvanceUntilIter::new(["a", "b", "c", "d"].iter());
         let iter2 = AdvanceUntilIter::new(["b", "c", "d"].iter());
         assert!(iter1.is_superset(iter2));
@@ -600,6 +667,21 @@ mod tests {
 
     #[test]
     fn set_difference() {
+        let set1 = Set::<&str>::from(vec!["a", "b", "c", "d"]);
+        let set2 = Set::<&str>::from(vec!["b", "c", "d", "e"]);
+        assert_eq!(
+            vec!["a"],
+            (set1.iter().difference(set2.iter()))
+                .cloned()
+                .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec!["e"],
+            (set2.iter().difference(set1.iter()))
+                .cloned()
+                .collect::<Vec<&str>>()
+        );
+
         assert_eq!(
             vec!["a"],
             AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
@@ -625,6 +707,21 @@ mod tests {
 
     #[test]
     fn set_intersection() {
+        let set1 = Set::<&str>::from(vec!["a", "b", "c", "d"]);
+        let set2 = Set::<&str>::from(vec!["b", "c", "d", "e"]);
+        assert_eq!(
+            vec!["b", "c", "d"],
+            (set1.iter().intersection(set2.iter()))
+                .cloned()
+                .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec!["b", "c", "d"],
+            (set2.iter().intersection(set1.iter()))
+                .cloned()
+                .collect::<Vec<&str>>()
+        );
+
         assert_eq!(
             vec!["b", "c", "d"],
             AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
@@ -650,6 +747,21 @@ mod tests {
 
     #[test]
     fn set_symmetric_difference() {
+        let set1 = Set::<&str>::from(vec!["a", "b", "c", "d"]);
+        let set2 = Set::<&str>::from(vec!["b", "c", "d", "e"]);
+        assert_eq!(
+            vec!["a", "e"],
+            (set1.iter().symmetric_difference(set2.iter()))
+                .cloned()
+                .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec!["a", "e"],
+            (set2.iter().symmetric_difference(set1.iter()))
+                .cloned()
+                .collect::<Vec<&str>>()
+        );
+
         assert_eq!(
             vec!["a", "e"],
             AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
@@ -675,6 +787,21 @@ mod tests {
 
     #[test]
     fn set_union() {
+        let set1 = Set::<&str>::from(vec!["a", "b", "c", "d"]);
+        let set2 = Set::<&str>::from(vec!["b", "c", "d", "e"]);
+        assert_eq!(
+            vec!["a", "b", "c", "d", "e"],
+            (set1.iter().union(set2.iter()))
+                .cloned()
+                .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec!["a", "b", "c", "d", "e"],
+            (set2.iter().union(set1.iter()))
+                .cloned()
+                .collect::<Vec<&str>>()
+        );
+
         assert_eq!(
             vec!["a", "b", "c", "d", "e"],
             AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
