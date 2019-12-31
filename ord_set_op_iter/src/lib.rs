@@ -1,6 +1,6 @@
 // Copyright 2019 Peter Williams <pwil3058@gmail.com> <pwil3058@bigpond.net.au>
 
-pub use std::ops::Sub;
+pub use std::ops::{BitAnd, BitOr, BitXor, Sub};
 use std::{cmp::Ordering, marker::PhantomData};
 
 /// Iterator enhancement to provide peek and advance ahead features. This mechanism
@@ -81,6 +81,45 @@ where
     T: Ord + 'a,
     I: Iterator<Item = &'a T>,
 {
+}
+
+impl<'a, T, I, O> std::ops::BitAnd<O> for AdvanceUntilIter<I>
+where
+    T: Ord + 'a,
+    I: Iterator<Item = &'a T>,
+    O: SkipAheadIterator<'a, T>,
+{
+    type Output = SetOperationIter<'a, T, Self, O>;
+
+    fn bitand(self, other: O) -> Self::Output {
+        self.intersection(other)
+    }
+}
+
+impl<'a, T, I, O> std::ops::BitOr<O> for AdvanceUntilIter<I>
+where
+    T: Ord + 'a,
+    I: Iterator<Item = &'a T>,
+    O: SkipAheadIterator<'a, T>,
+{
+    type Output = SetOperationIter<'a, T, Self, O>;
+
+    fn bitor(self, other: O) -> Self::Output {
+        self.union(other)
+    }
+}
+
+impl<'a, T, I, O> std::ops::BitXor<O> for AdvanceUntilIter<I>
+where
+    T: Ord + 'a,
+    I: Iterator<Item = &'a T>,
+    O: SkipAheadIterator<'a, T>,
+{
+    type Output = SetOperationIter<'a, T, Self, O>;
+
+    fn bitxor(self, other: O) -> Self::Output {
+        self.symmetric_difference(other)
+    }
 }
 
 impl<'a, T, I, O> std::ops::Sub<O> for AdvanceUntilIter<I>
@@ -489,6 +528,48 @@ where
 {
 }
 
+impl<'a, T, L, R, O> std::ops::BitAnd<O> for SetOperationIter<'a, T, L, R>
+where
+    T: Ord + 'a,
+    L: SkipAheadIterator<'a, T>,
+    R: SkipAheadIterator<'a, T>,
+    O: SkipAheadIterator<'a, T>,
+{
+    type Output = SetOperationIter<'a, T, Self, O>;
+
+    fn bitand(self, other: O) -> Self::Output {
+        self.intersection(other)
+    }
+}
+
+impl<'a, T, L, R, O> std::ops::BitOr<O> for SetOperationIter<'a, T, L, R>
+where
+    T: Ord + 'a,
+    L: SkipAheadIterator<'a, T>,
+    R: SkipAheadIterator<'a, T>,
+    O: SkipAheadIterator<'a, T>,
+{
+    type Output = SetOperationIter<'a, T, Self, O>;
+
+    fn bitor(self, other: O) -> Self::Output {
+        self.union(other)
+    }
+}
+
+impl<'a, T, L, R, O> std::ops::BitXor<O> for SetOperationIter<'a, T, L, R>
+where
+    T: Ord + 'a,
+    L: SkipAheadIterator<'a, T>,
+    R: SkipAheadIterator<'a, T>,
+    O: SkipAheadIterator<'a, T>,
+{
+    type Output = SetOperationIter<'a, T, Self, O>;
+
+    fn bitxor(self, other: O) -> Self::Output {
+        self.symmetric_difference(other)
+    }
+}
+
 impl<'a, T, L, R, O> std::ops::Sub<O> for SetOperationIter<'a, T, L, R>
 where
     T: Ord + 'a,
@@ -527,6 +608,13 @@ mod tests {
                 .collect::<Vec<&str>>()
         );
         assert_eq!(
+            vec!["a"],
+            (AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
+                - AdvanceUntilIter::new(["b", "c", "d", "e"].iter()))
+            .map(|v| *v)
+            .collect::<Vec<&str>>()
+        );
+        assert_eq!(
             vec![0],
             AdvanceUntilIter::new([0, 1, 2, 3].iter())
                 .difference(AdvanceUntilIter::new([1, 2, 3, 4, 5].iter()))
@@ -543,6 +631,13 @@ mod tests {
                 .intersection(AdvanceUntilIter::new(["b", "c", "d", "e"].iter()))
                 .map(|v| *v)
                 .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec!["b", "c", "d"],
+            (AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
+                & AdvanceUntilIter::new(["b", "c", "d", "e"].iter()))
+            .map(|v| *v)
+            .collect::<Vec<&str>>()
         );
         assert_eq!(
             vec![1, 2, 3],
@@ -563,6 +658,13 @@ mod tests {
                 .collect::<Vec<&str>>()
         );
         assert_eq!(
+            vec!["a", "e"],
+            (AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
+                ^ AdvanceUntilIter::new(["b", "c", "d", "e"].iter()))
+            .map(|v| *v)
+            .collect::<Vec<&str>>()
+        );
+        assert_eq!(
             vec![0, 4, 5],
             AdvanceUntilIter::new([0, 1, 2, 3].iter())
                 .symmetric_difference(AdvanceUntilIter::new([1, 2, 3, 4, 5].iter()))
@@ -579,6 +681,13 @@ mod tests {
                 .union(AdvanceUntilIter::new(["b", "c", "d", "e"].iter()))
                 .map(|v| *v)
                 .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec!["a", "b", "c", "d", "e"],
+            (AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
+                | AdvanceUntilIter::new(["b", "c", "d", "e"].iter()))
+            .map(|v| *v)
+            .collect::<Vec<&str>>()
         );
         assert_eq!(
             vec![0, 1, 2, 3, 4, 5],
