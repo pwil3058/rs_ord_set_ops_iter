@@ -25,10 +25,67 @@ pub trait SkipAheadIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> {
     }
 }
 
+pub struct AdvanceUntilIter<I: Iterator> {
+    iter: I,
+    peek: Option<I::Item>,
+}
+
+impl<I: Iterator> AdvanceUntilIter<I> {
+    pub fn new(mut iter: I) -> Self {
+        let peek = iter.next();
+        Self { iter, peek }
+    }
+}
+
+impl<I: Iterator> Iterator for AdvanceUntilIter<I> {
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<I::Item> {
+        match self.peek.take() {
+            Some(item) => {
+                self.peek = self.iter.next();
+                Some(item)
+            }
+            None => None,
+        }
+    }
+}
+
+impl<'a, T, I> SkipAheadIterator<'a, T> for AdvanceUntilIter<I>
+where
+    T: Ord + 'a,
+    I: Iterator<Item = &'a T>,
+{
+    fn peek(&mut self) -> Option<&'a T> {
+        self.peek
+    }
+
+    fn advance_until(&mut self, t: &T) -> &mut Self {
+        if let Some(item) = self.peek {
+            if t > item {
+                while let Some(inner) = self.iter.next() {
+                    if t <= inner {
+                        self.peek = Some(inner);
+                        return self;
+                    }
+                }
+                self.peek = None;
+            }
+        }
+        self
+    }
+}
+
+impl<'a, T, I> IterSetOperations<'a, T> for AdvanceUntilIter<I>
+where
+    T: Ord + 'a,
+    I: Iterator<Item = &'a T>,
+{
+}
 
 pub trait IterSetOperations<'a, T>: SkipAheadIterator<'a, T> + Sized
-    where
-        T: 'a + Ord,
+where
+    T: 'a + Ord,
 {
     /// Iterate over the set difference of this Iterator and the given Iterator
     /// in the order defined by their elements `Ord` trait implementation.
@@ -237,18 +294,13 @@ where
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
                                 l_iter.advance_until(r_item);
-                                r_iter.next();
                                 l_iter.next()
                             }
                             Ordering::Greater => {
                                 r_iter.advance_until(l_item);
-                                l_iter.next();
                                 r_iter.next()
                             }
-                            Ordering::Equal => {
-                                r_iter.next();
-                                l_iter.next()
-                            }
+                            Ordering::Equal => l_iter.next(),
                         }
                     } else {
                         None
@@ -426,55 +478,15 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{IterSetOperations, SkipAheadIterator};
-
-    struct SkipAheadIter<I: Iterator> {
-        iter: I,
-        peeked: Option<Option<I::Item>>,
-    }
-
-    impl<I: Iterator> SkipAheadIter<I> {
-        pub fn new(iter: I) -> Self {
-            Self { iter, peeked: None }
-        }
-    }
-
-    impl<I: Iterator> Iterator for SkipAheadIter<I> {
-        type Item = I::Item;
-
-        fn next(&mut self) -> Option<I::Item> {
-            match self.peeked.take() {
-                Some(item) => item,
-                None => self.iter.next(),
-            }
-        }
-    }
-
-    impl<'a, T, I> SkipAheadIterator<'a, T> for SkipAheadIter<I>
-    where
-        T: Ord + 'a,
-        I: Iterator<Item = &'a T>,
-    {
-        fn peek(&mut self) -> Option<&'a T> {
-            let iter = &mut self.iter;
-            *self.peeked.get_or_insert_with(|| iter.next())
-        }
-    }
-
-    impl<'a, T, I> IterSetOperations<'a, T> for SkipAheadIter<I>
-    where
-        T: Ord + 'a,
-        I: Iterator<Item = &'a T>,
-    {
-    }
+    use crate::{AdvanceUntilIter, IterSetOperations, SkipAheadIterator};
 
     #[test]
     fn set_relations() {
-        let iter1 = SkipAheadIter::new(["a", "b", "c", "d"].iter());
-        let iter2 = SkipAheadIter::new(["b", "c", "d"].iter());
+        let iter1 = AdvanceUntilIter::new(["a", "b", "c", "d"].iter());
+        let iter2 = AdvanceUntilIter::new(["b", "c", "d"].iter());
         assert!(iter1.is_superset(iter2));
-        let iter1 = SkipAheadIter::new(["a", "b", "c", "d"].iter());
-        let iter2 = SkipAheadIter::new(["b", "c", "d"].iter());
+        let iter1 = AdvanceUntilIter::new(["a", "b", "c", "d"].iter());
+        let iter2 = AdvanceUntilIter::new(["b", "c", "d"].iter());
         assert!(!iter1.is_subset(iter2));
     }
 
@@ -482,15 +494,15 @@ mod tests {
     fn set_difference() {
         assert_eq!(
             vec!["a"],
-            SkipAheadIter::new(["a", "b", "c", "d"].iter())
-                .difference(SkipAheadIter::new(["b", "c", "d", "e"].iter()))
+            AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
+                .difference(AdvanceUntilIter::new(["b", "c", "d", "e"].iter()))
                 .map(|v| *v)
                 .collect::<Vec<&str>>()
         );
         assert_eq!(
             vec![0],
-            SkipAheadIter::new([0, 1, 2, 3].iter())
-                .difference(SkipAheadIter::new([1, 2, 3, 4, 5].iter()))
+            AdvanceUntilIter::new([0, 1, 2, 3].iter())
+                .difference(AdvanceUntilIter::new([1, 2, 3, 4, 5].iter()))
                 .cloned()
                 .collect::<Vec<i32>>()
         );
@@ -500,15 +512,15 @@ mod tests {
     fn set_intersection() {
         assert_eq!(
             vec!["b", "c", "d"],
-            SkipAheadIter::new(["a", "b", "c", "d"].iter())
-                .intersection(SkipAheadIter::new(["b", "c", "d", "e"].iter()))
+            AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
+                .intersection(AdvanceUntilIter::new(["b", "c", "d", "e"].iter()))
                 .map(|v| *v)
                 .collect::<Vec<&str>>()
         );
         assert_eq!(
             vec![1, 2, 3],
-            SkipAheadIter::new([0, 1, 2, 3].iter())
-                .intersection(SkipAheadIter::new([1, 2, 3, 4, 5].iter()))
+            AdvanceUntilIter::new([0, 1, 2, 3].iter())
+                .intersection(AdvanceUntilIter::new([1, 2, 3, 4, 5].iter()))
                 .cloned()
                 .collect::<Vec<i32>>()
         );
@@ -518,15 +530,15 @@ mod tests {
     fn set_symmetric_difference() {
         assert_eq!(
             vec!["a", "e"],
-            SkipAheadIter::new(["a", "b", "c", "d"].iter())
-                .symmetric_difference(SkipAheadIter::new(["b", "c", "d", "e"].iter()))
+            AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
+                .symmetric_difference(AdvanceUntilIter::new(["b", "c", "d", "e"].iter()))
                 .map(|v| *v)
                 .collect::<Vec<&str>>()
         );
         assert_eq!(
             vec![0, 4, 5],
-            SkipAheadIter::new([0, 1, 2, 3].iter())
-                .symmetric_difference(SkipAheadIter::new([1, 2, 3, 4, 5].iter()))
+            AdvanceUntilIter::new([0, 1, 2, 3].iter())
+                .symmetric_difference(AdvanceUntilIter::new([1, 2, 3, 4, 5].iter()))
                 .cloned()
                 .collect::<Vec<i32>>()
         );
@@ -536,15 +548,15 @@ mod tests {
     fn set_union() {
         assert_eq!(
             vec!["a", "b", "c", "d", "e"],
-            SkipAheadIter::new(["a", "b", "c", "d"].iter())
-                .union(SkipAheadIter::new(["b", "c", "d", "e"].iter()))
+            AdvanceUntilIter::new(["a", "b", "c", "d"].iter())
+                .union(AdvanceUntilIter::new(["b", "c", "d", "e"].iter()))
                 .map(|v| *v)
                 .collect::<Vec<&str>>()
         );
         assert_eq!(
             vec![0, 1, 2, 3, 4, 5],
-            SkipAheadIter::new([0, 1, 2, 3].iter())
-                .union(SkipAheadIter::new([1, 2, 3, 4, 5].iter()))
+            AdvanceUntilIter::new([0, 1, 2, 3].iter())
+                .union(AdvanceUntilIter::new([1, 2, 3, 4, 5].iter()))
                 .cloned()
                 .collect::<Vec<i32>>()
         );
