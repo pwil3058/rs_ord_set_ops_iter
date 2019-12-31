@@ -1,7 +1,7 @@
 // Copyright 2019 Peter Williams <pwil3058@gmail.com> <pwil3058@bigpond.net.au>
 
-use std::cmp::Ordering;
-use std::marker::PhantomData;
+pub use std::ops::Sub;
+use std::{cmp::Ordering, marker::PhantomData};
 
 /// Iterator enhancement to provide peek and advance ahead features. This mechanism
 /// is used to optimise implementation of set operation (difference, intersection, etc)
@@ -81,6 +81,19 @@ where
     T: Ord + 'a,
     I: Iterator<Item = &'a T>,
 {
+}
+
+impl<'a, T, I, O> std::ops::Sub<O> for AdvanceUntilIter<I>
+where
+    T: Ord + 'a,
+    I: Iterator<Item = &'a T>,
+    O: SkipAheadIterator<'a, T>,
+{
+    type Output = SetOperationIter<'a, T, Self, O>;
+
+    fn sub(self, other: O) -> Self::Output {
+        self.difference(other)
+    }
 }
 
 pub trait IterSetOperations<'a, T>: SkipAheadIterator<'a, T> + Sized
@@ -476,9 +489,23 @@ where
 {
 }
 
+impl<'a, T, L, R, O> std::ops::Sub<O> for SetOperationIter<'a, T, L, R>
+where
+    T: Ord + 'a,
+    L: SkipAheadIterator<'a, T>,
+    R: SkipAheadIterator<'a, T>,
+    O: SkipAheadIterator<'a, T>,
+{
+    type Output = SetOperationIter<'a, T, Self, O>;
+
+    fn sub(self, other: O) -> Self::Output {
+        self.difference(other)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{AdvanceUntilIter, IterSetOperations, SkipAheadIterator};
+    use crate::{AdvanceUntilIter, IterSetOperations};
 
     #[test]
     fn set_relations() {
