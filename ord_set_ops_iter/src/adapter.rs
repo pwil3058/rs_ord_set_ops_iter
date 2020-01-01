@@ -5,6 +5,7 @@ pub use std::{
     ops::{BitAnd, BitOr, BitXor, Sub},
 };
 
+use crate::adapter::btree_set::BTreeSet;
 pub use crate::{OrdSetOpsIter, OrdSetOpsIterator};
 
 pub trait OrdSetOpsIterAdaptation: Iterator + Sized {
@@ -126,6 +127,48 @@ where
     #[inline]
     fn sub(self, other: O) -> Self::Output {
         self.difference(other)
+    }
+}
+
+pub trait OrdSetOpsSetAdaption<'a, T: 'a + Ord, I>
+where
+    T: 'a + Ord,
+    I: Iterator<Item = &'a T>,
+{
+    fn oso_iter(&'a self) -> OrdSetOpsIterAdapter<I>;
+
+    fn oso_difference(
+        &'a self,
+        other: &'a Self,
+    ) -> OrdSetOpsIter<'a, T, OrdSetOpsIterAdapter<I>, OrdSetOpsIterAdapter<I>> {
+        self.oso_iter().difference(other.oso_iter())
+    }
+
+    fn oso_intersection(
+        &'a self,
+        other: &'a Self,
+    ) -> OrdSetOpsIter<'a, T, OrdSetOpsIterAdapter<I>, OrdSetOpsIterAdapter<I>> {
+        self.oso_iter().intersection(other.oso_iter())
+    }
+
+    fn oso_symmetric_difference(
+        &'a self,
+        other: &'a Self,
+    ) -> OrdSetOpsIter<'a, T, OrdSetOpsIterAdapter<I>, OrdSetOpsIterAdapter<I>> {
+        self.oso_iter().symmetric_difference(other.oso_iter())
+    }
+
+    fn oso_union(
+        &'a self,
+        other: &'a Self,
+    ) -> OrdSetOpsIter<'a, T, OrdSetOpsIterAdapter<I>, OrdSetOpsIterAdapter<I>> {
+        self.oso_iter().union(other.oso_iter())
+    }
+}
+
+impl<'a, T: 'a + Ord> OrdSetOpsSetAdaption<'a, T, btree_set::Iter<'a, T>> for BTreeSet<T> {
+    fn oso_iter(&'a self) -> OrdSetOpsIterAdapter<btree_set::Iter<'a, T>> {
+        self.iter().ord_set_ops()
     }
 }
 
@@ -268,6 +311,24 @@ mod b_tree_set_tests {
             (set1.union(&set2).ord_set_ops() & set3.iter().ord_set_ops())
                 .cloned()
                 .collect()
+        );
+    }
+
+    #[test]
+    fn set_adapter() {
+        let set1: BTreeSet<&str> = ["a", "b", "c", "g", "e", "f"].iter().cloned().collect();
+        let set2: BTreeSet<&str> = ["c", "f", "i", "l"].iter().cloned().collect();
+        let set3: BTreeSet<&str> = ["c", "e", "i"].iter().cloned().collect();
+        let result = &(&set1 | &set2) & &set3;
+        assert_eq!(
+            result,
+            ((set1.oso_iter() | set2.oso_iter()) & set3.oso_iter())
+                .cloned()
+                .collect()
+        );
+        assert_eq!(
+            result,
+            (set1.oso_union(&set2) & set3.oso_iter()).cloned().collect()
         );
     }
 }
