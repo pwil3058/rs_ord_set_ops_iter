@@ -8,12 +8,16 @@ pub use std::{
 pub use crate::{OrdSetOpsIter, OrdSetOpsIterator};
 
 pub trait OrdSetOpsIterAdaptation: Iterator + Sized {
-    fn ord_set_ops_iter(self) -> OrdSetOpsIterAdapter<Self> {
+    fn ord_set_ops(self) -> OrdSetOpsIterAdapter<Self> {
         OrdSetOpsIterAdapter::new(self)
     }
 }
 
 impl<'a, T: Ord> OrdSetOpsIterAdaptation for btree_set::Iter<'a, T> {}
+impl<'a, T: Ord> OrdSetOpsIterAdaptation for btree_set::Difference<'a, T> {}
+impl<'a, T: Ord> OrdSetOpsIterAdaptation for btree_set::Intersection<'a, T> {}
+impl<'a, T: Ord> OrdSetOpsIterAdaptation for btree_set::SymmetricDifference<'a, T> {}
+impl<'a, T: Ord> OrdSetOpsIterAdaptation for btree_set::Union<'a, T> {}
 
 pub struct OrdSetOpsIterAdapter<I: Iterator> {
     iter: I,
@@ -253,9 +257,17 @@ mod b_tree_set_tests {
         let set2: BTreeSet<&str> = ["c", "f", "i", "l"].iter().cloned().collect();
         let set3: BTreeSet<&str> = ["c", "e", "i"].iter().cloned().collect();
         let result = &(&set1 | &set2) & &set3;
-
-        let iter = (set1.iter().ord_set_ops_iter() | set2.iter().ord_set_ops_iter())
-            & set3.iter().ord_set_ops_iter();
-        assert_eq!(result, iter.cloned().collect());
+        assert_eq!(
+            result,
+            ((set1.iter().ord_set_ops() | set2.iter().ord_set_ops()) & set3.iter().ord_set_ops())
+                .cloned()
+                .collect()
+        );
+        assert_eq!(
+            result,
+            (set1.union(&set2).ord_set_ops() & set3.iter().ord_set_ops())
+                .cloned()
+                .collect()
+        );
     }
 }
