@@ -1,5 +1,5 @@
 [workspace]
 
 members = [
-    "ord_set_op_iter",
+    "ord_set_ops_iter",
 ]

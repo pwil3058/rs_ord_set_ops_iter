@@ -3,6 +3,8 @@
 pub use std::ops::{BitAnd, BitOr, BitXor, Sub};
 use std::{cmp::Ordering, marker::PhantomData};
 
+pub mod adapter;
+
 /// Ordered Iterator over set operations on the contents of an ordered set.
 pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
     /// Peek at the next item in the iterator without advancing the iterator.
@@ -172,109 +174,6 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
             }
         }
         true
-    }
-}
-
-pub struct OrdSetOpsIterAdapter<I: Iterator> {
-    iter: I,
-    peek: Option<I::Item>,
-}
-
-impl<I: Iterator> OrdSetOpsIterAdapter<I> {
-    pub fn new(mut iter: I) -> Self {
-        let peek = iter.next();
-        Self { iter, peek }
-    }
-}
-
-impl<I: Iterator> Iterator for OrdSetOpsIterAdapter<I> {
-    type Item = I::Item;
-
-    fn next(&mut self) -> Option<I::Item> {
-        match self.peek.take() {
-            Some(item) => {
-                self.peek = self.iter.next();
-                Some(item)
-            }
-            None => None,
-        }
-    }
-}
-
-impl<'a, T, I> OrdSetOpsIterator<'a, T> for OrdSetOpsIterAdapter<I>
-where
-    T: Ord + 'a,
-    I: Iterator<Item = &'a T>,
-{
-    fn peek(&mut self) -> Option<&'a T> {
-        self.peek
-    }
-
-    fn advance_until(&mut self, t: &T) -> &mut Self {
-        if let Some(item) = self.peek {
-            if t > item {
-                while let Some(inner) = self.iter.next() {
-                    if t <= inner {
-                        self.peek = Some(inner);
-                        return self;
-                    }
-                }
-                self.peek = None;
-            }
-        }
-        self
-    }
-}
-
-impl<'a, T, I, O> BitAnd<O> for OrdSetOpsIterAdapter<I>
-where
-    T: Ord + 'a,
-    I: Iterator<Item = &'a T>,
-    O: OrdSetOpsIterator<'a, T>,
-{
-    type Output = OrdSetOpsIter<'a, T, Self, O>;
-
-    fn bitand(self, other: O) -> Self::Output {
-        self.intersection(other)
-    }
-}
-
-impl<'a, T, I, O> BitOr<O> for OrdSetOpsIterAdapter<I>
-where
-    T: Ord + 'a,
-    I: Iterator<Item = &'a T>,
-    O: OrdSetOpsIterator<'a, T>,
-{
-    type Output = OrdSetOpsIter<'a, T, Self, O>;
-
-    fn bitor(self, other: O) -> Self::Output {
-        self.union(other)
-    }
-}
-
-impl<'a, T, I, O> BitXor<O> for OrdSetOpsIterAdapter<I>
-where
-    T: Ord + 'a,
-    I: Iterator<Item = &'a T>,
-    O: OrdSetOpsIterator<'a, T>,
-{
-    type Output = OrdSetOpsIter<'a, T, Self, O>;
-
-    fn bitxor(self, other: O) -> Self::Output {
-        self.symmetric_difference(other)
-    }
-}
-
-impl<'a, T, I, O> Sub<O> for OrdSetOpsIterAdapter<I>
-where
-    T: Ord + 'a,
-    I: Iterator<Item = &'a T>,
-    O: OrdSetOpsIterator<'a, T>,
-{
-    type Output = OrdSetOpsIter<'a, T, Self, O>;
-
-    fn sub(self, other: O) -> Self::Output {
-        self.difference(other)
     }
 }
 
@@ -512,6 +411,7 @@ where
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
 
+    #[inline]
     fn bitand(self, other: O) -> Self::Output {
         self.intersection(other)
     }
@@ -526,6 +426,7 @@ where
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
 
+    #[inline]
     fn bitor(self, other: O) -> Self::Output {
         self.union(other)
     }
@@ -540,6 +441,7 @@ where
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
 
+    #[inline]
     fn bitxor(self, other: O) -> Self::Output {
         self.symmetric_difference(other)
     }
@@ -554,6 +456,7 @@ where
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
 
+    #[inline]
     fn sub(self, other: O) -> Self::Output {
         self.difference(other)
     }
@@ -561,8 +464,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{OrdSetOpsIterAdapter, OrdSetOpsIterator};
-    use std::clone::Clone;
+    use crate::OrdSetOpsIterator;
 
     struct Set<T: Ord>(Vec<T>);
 
@@ -629,13 +531,6 @@ mod tests {
         let set2 = Set::<&str>::from(vec!["b", "c", "d"]);
         assert!(set1.is_superset(&set2));
         assert!(!set1.is_subset(&set2));
-
-        let iter1 = OrdSetOpsIterAdapter::new(["a", "b", "c", "d"].iter());
-        let iter2 = OrdSetOpsIterAdapter::new(["b", "c", "d"].iter());
-        assert!(iter1.is_superset(iter2));
-        let iter1 = OrdSetOpsIterAdapter::new(["a", "b", "c", "d"].iter());
-        let iter2 = OrdSetOpsIterAdapter::new(["b", "c", "d"].iter());
-        assert!(!iter1.is_subset(iter2));
     }
 
     #[test]
@@ -653,28 +548,6 @@ mod tests {
             (set2.iter().difference(set1.iter()))
                 .cloned()
                 .collect::<Vec<&str>>()
-        );
-
-        assert_eq!(
-            vec!["a"],
-            OrdSetOpsIterAdapter::new(["a", "b", "c", "d"].iter())
-                .difference(OrdSetOpsIterAdapter::new(["b", "c", "d", "e"].iter()))
-                .map(|v| *v)
-                .collect::<Vec<&str>>()
-        );
-        assert_eq!(
-            vec!["a"],
-            (OrdSetOpsIterAdapter::new(["a", "b", "c", "d"].iter())
-                - OrdSetOpsIterAdapter::new(["b", "c", "d", "e"].iter()))
-            .map(|v| *v)
-            .collect::<Vec<&str>>()
-        );
-        assert_eq!(
-            vec![0],
-            OrdSetOpsIterAdapter::new([0, 1, 2, 3].iter())
-                .difference(OrdSetOpsIterAdapter::new([1, 2, 3, 4, 5].iter()))
-                .cloned()
-                .collect::<Vec<i32>>()
         );
     }
 
@@ -694,28 +567,6 @@ mod tests {
                 .cloned()
                 .collect::<Vec<&str>>()
         );
-
-        assert_eq!(
-            vec!["b", "c", "d"],
-            OrdSetOpsIterAdapter::new(["a", "b", "c", "d"].iter())
-                .intersection(OrdSetOpsIterAdapter::new(["b", "c", "d", "e"].iter()))
-                .map(|v| *v)
-                .collect::<Vec<&str>>()
-        );
-        assert_eq!(
-            vec!["b", "c", "d"],
-            (OrdSetOpsIterAdapter::new(["a", "b", "c", "d"].iter())
-                & OrdSetOpsIterAdapter::new(["b", "c", "d", "e"].iter()))
-            .map(|v| *v)
-            .collect::<Vec<&str>>()
-        );
-        assert_eq!(
-            vec![1, 2, 3],
-            OrdSetOpsIterAdapter::new([0, 1, 2, 3].iter())
-                .intersection(OrdSetOpsIterAdapter::new([1, 2, 3, 4, 5].iter()))
-                .cloned()
-                .collect::<Vec<i32>>()
-        );
     }
 
     #[test]
@@ -734,28 +585,6 @@ mod tests {
                 .cloned()
                 .collect::<Vec<&str>>()
         );
-
-        assert_eq!(
-            vec!["a", "e"],
-            OrdSetOpsIterAdapter::new(["a", "b", "c", "d"].iter())
-                .symmetric_difference(OrdSetOpsIterAdapter::new(["b", "c", "d", "e"].iter()))
-                .map(|v| *v)
-                .collect::<Vec<&str>>()
-        );
-        assert_eq!(
-            vec!["a", "e"],
-            (OrdSetOpsIterAdapter::new(["a", "b", "c", "d"].iter())
-                ^ OrdSetOpsIterAdapter::new(["b", "c", "d", "e"].iter()))
-            .map(|v| *v)
-            .collect::<Vec<&str>>()
-        );
-        assert_eq!(
-            vec![0, 4, 5],
-            OrdSetOpsIterAdapter::new([0, 1, 2, 3].iter())
-                .symmetric_difference(OrdSetOpsIterAdapter::new([1, 2, 3, 4, 5].iter()))
-                .cloned()
-                .collect::<Vec<i32>>()
-        );
     }
 
     #[test]
@@ -773,28 +602,6 @@ mod tests {
             (set2.iter().union(set1.iter()))
                 .cloned()
                 .collect::<Vec<&str>>()
-        );
-
-        assert_eq!(
-            vec!["a", "b", "c", "d", "e"],
-            OrdSetOpsIterAdapter::new(["a", "b", "c", "d"].iter())
-                .union(OrdSetOpsIterAdapter::new(["b", "c", "d", "e"].iter()))
-                .map(|v| *v)
-                .collect::<Vec<&str>>()
-        );
-        assert_eq!(
-            vec!["a", "b", "c", "d", "e"],
-            (OrdSetOpsIterAdapter::new(["a", "b", "c", "d"].iter())
-                | OrdSetOpsIterAdapter::new(["b", "c", "d", "e"].iter()))
-            .map(|v| *v)
-            .collect::<Vec<&str>>()
-        );
-        assert_eq!(
-            vec![0, 1, 2, 3, 4, 5],
-            OrdSetOpsIterAdapter::new([0, 1, 2, 3].iter())
-                .union(OrdSetOpsIterAdapter::new([1, 2, 3, 4, 5].iter()))
-                .cloned()
-                .collect::<Vec<i32>>()
         );
     }
 }
