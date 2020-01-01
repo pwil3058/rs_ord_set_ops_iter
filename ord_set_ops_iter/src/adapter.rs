@@ -1,8 +1,19 @@
 // Copyright 2020 Peter Williams <pwil3058@gmail.com> <pwil3058@bigpond.net.au>
 
-pub use std::ops::{BitAnd, BitOr, BitXor, Sub};
+pub use std::{
+    collections::btree_set,
+    ops::{BitAnd, BitOr, BitXor, Sub},
+};
 
 pub use crate::{OrdSetOpsIter, OrdSetOpsIterator};
+
+pub trait OrdSetOpsIterAdaptation: Iterator + Sized {
+    fn ord_set_ops_iter(self) -> OrdSetOpsIterAdapter<Self> {
+        OrdSetOpsIterAdapter::new(self)
+    }
+}
+
+impl<'a, T: Ord> OrdSetOpsIterAdaptation for btree_set::Iter<'a, T> {}
 
 pub struct OrdSetOpsIterAdapter<I: Iterator> {
     iter: I,
@@ -227,5 +238,24 @@ mod tests {
                 .cloned()
                 .collect::<Vec<i32>>()
         );
+    }
+}
+
+#[cfg(test)]
+mod b_tree_set_tests {
+    use std::collections::BTreeSet;
+
+    use super::*;
+
+    #[test]
+    fn iterator_adapter() {
+        let set1: BTreeSet<&str> = ["a", "b", "c", "g", "e", "f"].iter().cloned().collect();
+        let set2: BTreeSet<&str> = ["c", "f", "i", "l"].iter().cloned().collect();
+        let set3: BTreeSet<&str> = ["c", "e", "i"].iter().cloned().collect();
+        let result = &(&set1 | &set2) & &set3;
+
+        let iter = (set1.iter().ord_set_ops_iter() | set2.iter().ord_set_ops_iter())
+            & set3.iter().ord_set_ops_iter();
+        assert_eq!(result, iter.cloned().collect());
     }
 }
