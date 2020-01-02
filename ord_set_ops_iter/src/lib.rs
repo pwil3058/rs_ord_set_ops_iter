@@ -13,7 +13,7 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
     /// Advance this iterator to the next item at or after the given item and
     /// return a pointer to this iterator. Default implementation is O(n) but
     /// custom built implementations could be as good as O(log(n)).
-    fn advance_until(&mut self, t: &T) -> &mut Self {
+    fn advance_until(&mut self, t: &T) {
         while let Some(item) = self.peek() {
             if t > item {
                 self.next();
@@ -21,7 +21,6 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
                 break;
             }
         }
-        self
     }
 
     /// Iterate over the set difference of this Iterator and the given Iterator
@@ -377,7 +376,7 @@ where
         }
     }
 
-    fn advance_until(&mut self, t: &T) -> &mut Self {
+    fn advance_until(&mut self, t: &T) {
         use OrdSetOpsIter::*;
         match self {
             Difference(l_iter, r_iter) => {
@@ -398,7 +397,6 @@ where
             }
             Bogus(_) => panic!("'Bogus' should never be used"),
         };
-        self
     }
 }
 
@@ -495,12 +493,11 @@ mod tests {
     }
 
     impl<'a, T: 'a + Ord> OrdSetOpsIterator<'a, T> for SetIter<'a, T> {
-        fn advance_until(&mut self, t: &T) -> &mut Self {
+        fn advance_until(&mut self, t: &T) {
             self.index += match self.elements[self.index..].binary_search(t) {
                 Ok(index) => index,
                 Err(index) => index,
             };
-            self
         }
 
         fn peek(&mut self) -> Option<&'a T> {

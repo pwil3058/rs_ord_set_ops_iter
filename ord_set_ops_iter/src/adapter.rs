@@ -58,19 +58,18 @@ where
         self.peek
     }
 
-    fn advance_until(&mut self, t: &T) -> &mut Self {
+    fn advance_until(&mut self, t: &T) {
         if let Some(item) = self.peek {
             if t > item {
                 while let Some(inner) = self.iter.next() {
                     if t <= inner {
                         self.peek = Some(inner);
-                        return self;
+                        return;
                     }
                 }
                 self.peek = None;
             }
         }
-        self
     }
 }
 
