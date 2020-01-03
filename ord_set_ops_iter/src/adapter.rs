@@ -298,7 +298,33 @@ mod b_tree_set_tests {
         let set1: BTreeSet<&str> = ["a", "b", "c", "g", "e", "f"].iter().cloned().collect();
         let set2: BTreeSet<&str> = ["c", "f", "i", "l"].iter().cloned().collect();
         let set3: BTreeSet<&str> = ["c", "e", "i"].iter().cloned().collect();
+        assert_eq!(
+            vec!["c", "e"],
+            (set1.iter().ord_set_ops() & set3.iter().ord_set_ops())
+                .cloned()
+                .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec!["c", "i"],
+            (set2.iter().ord_set_ops() & set3.iter().ord_set_ops())
+                .cloned()
+                .collect::<Vec<&str>>()
+        );
         let result = &(&set1 | &set2) & &set3;
+        let set4: BTreeSet<&str> = (set1.iter().ord_set_ops() | set2.iter().ord_set_ops())
+            .cloned()
+            .collect();
+        assert_eq!(
+            result,
+            (set4.iter().ord_set_ops() & set3.iter().ord_set_ops())
+                .cloned()
+                .collect()
+        );
+        let iter = set1.iter().ord_set_ops() | set2.iter().ord_set_ops();
+        assert_eq!(
+            result,
+            (iter & set3.iter().ord_set_ops()).cloned().collect()
+        );
         assert_eq!(
             result,
             ((set1.iter().ord_set_ops() | set2.iter().ord_set_ops()) & set3.iter().ord_set_ops())
