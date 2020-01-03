@@ -105,6 +105,11 @@ pub fn overhead_benchmark(c: &mut Criterion) {
             let _result: BTreeSet<&str> = set1.iter().cloned().collect();
         })
     });
+    group.bench_function("peekable", |b| {
+        b.iter(|| {
+            let _result: BTreeSet<&str> = set1.iter().peekable().cloned().collect();
+        })
+    });
     group.bench_function("oso", |b| {
         b.iter(|| {
             let _result: BTreeSet<&str> = set1.oso_iter().cloned().collect();
