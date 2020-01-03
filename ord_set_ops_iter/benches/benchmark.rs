@@ -96,6 +96,23 @@ pub fn expression_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
+pub fn overhead_benchmark(c: &mut Criterion) {
+    let set1: BTreeSet<&str> = ["a", "b", "c", "g", "e", "f"].iter().cloned().collect();
+
+    let mut group = c.benchmark_group("Overhead 6");
+    group.bench_function("native", |b| {
+        b.iter(|| {
+            let _result: BTreeSet<&str> = set1.iter().cloned().collect();
+        })
+    });
+    group.bench_function("oso", |b| {
+        b.iter(|| {
+            let _result: BTreeSet<&str> = set1.oso_iter().cloned().collect();
+        })
+    });
+    group.finish();
+}
+
 criterion_group!(
     benches,
     union_benchmark,
@@ -103,5 +120,6 @@ criterion_group!(
     difference_benchmark,
     symmetric_difference_benchmark,
     expression_benchmark,
+    overhead_benchmark,
 );
 criterion_main!(benches);
