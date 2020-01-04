@@ -48,7 +48,7 @@ where
     I: Iterator<Item = &'a T>,
 {
     #[inline]
-    fn peek(&mut self) -> Option<&'a T> {
+    fn peep(&mut self) -> Option<&'a T> {
         if let Some(item) = self.iter.peek() {
             Some(*item)
         } else {

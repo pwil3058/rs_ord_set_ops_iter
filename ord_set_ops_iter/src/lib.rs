@@ -8,13 +8,13 @@ pub mod adapter;
 /// Ordered Iterator over set operations on the contents of an ordered set.
 pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
     /// Peek at the next item in the iterator without advancing the iterator.
-    fn peek(&mut self) -> Option<&'a T>;
+    fn peep(&mut self) -> Option<&'a T>;
 
     /// Advance this iterator to the next item at or after the given item and
     /// return a pointer to this iterator. Default implementation is O(n) but
     /// custom built implementations could be as good as O(log(n)).
     fn advance_until(&mut self, t: &T) {
-        while let Some(item) = self.peek() {
+        while let Some(item) = self.peep() {
             if t > item {
                 self.next();
             } else {
@@ -53,8 +53,8 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
     /// this iterator?
     fn is_disjoint<I: OrdSetOpsIterator<'a, T>>(mut self, mut other: I) -> bool {
         loop {
-            if let Some(my_item) = self.peek() {
-                if let Some(other_item) = other.peek() {
+            if let Some(my_item) = self.peep() {
+                if let Some(other_item) = other.peep() {
                     match my_item.cmp(&other_item) {
                         Ordering::Less => {
                             self.advance_until(other_item);
@@ -79,8 +79,8 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
     /// this iterator?
     fn is_proper_subset<I: OrdSetOpsIterator<'a, T>>(mut self, mut other: I) -> bool {
         let mut result = false;
-        while let Some(my_item) = self.peek() {
-            if let Some(other_item) = other.peek() {
+        while let Some(my_item) = self.peep() {
+            if let Some(other_item) = other.peep() {
                 match my_item.cmp(&other_item) {
                     Ordering::Less => {
                         return false;
@@ -105,8 +105,8 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
     /// this iterator?
     fn is_proper_superset<I: OrdSetOpsIterator<'a, T>>(mut self, mut other: I) -> bool {
         let mut result = false;
-        while let Some(my_item) = self.peek() {
-            if let Some(other_item) = other.peek() {
+        while let Some(my_item) = self.peep() {
+            if let Some(other_item) = other.peep() {
                 match my_item.cmp(&other_item) {
                     Ordering::Less => {
                         result = true;
@@ -130,8 +130,8 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
     /// Is the output of the given Iterator a subset of the output of
     /// this iterator?
     fn is_subset<I: OrdSetOpsIterator<'a, T>>(mut self, mut other: I) -> bool {
-        while let Some(my_item) = self.peek() {
-            if let Some(other_item) = other.peek() {
+        while let Some(my_item) = self.peep() {
+            if let Some(other_item) = other.peep() {
                 match my_item.cmp(&other_item) {
                     Ordering::Less => {
                         return false;
@@ -154,8 +154,8 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
     /// Is the output of the given Iterator a superset of the output of
     /// this iterator?
     fn is_superset<I: OrdSetOpsIterator<'a, T>>(mut self, mut other: I) -> bool {
-        while let Some(my_item) = self.peek() {
-            if let Some(other_item) = other.peek() {
+        while let Some(my_item) = self.peep() {
+            if let Some(other_item) = other.peep() {
                 match my_item.cmp(&other_item) {
                     Ordering::Less => {
                         self.advance_until(other_item);
@@ -201,8 +201,8 @@ where
         use OrdSetOpsIter::*;
         match self {
             Difference(l_iter, r_iter) => {
-                while let Some(l_item) = l_iter.peek() {
-                    if let Some(r_item) = r_iter.peek() {
+                while let Some(l_item) = l_iter.peep() {
+                    if let Some(r_item) = r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
                                 return l_iter.next();
@@ -222,8 +222,8 @@ where
                 None
             }
             Intersection(l_iter, r_iter) => {
-                if let Some(l_item) = l_iter.peek() {
-                    if let Some(r_item) = r_iter.peek() {
+                if let Some(l_item) = l_iter.peep() {
+                    if let Some(r_item) = r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
                                 l_iter.advance_until(r_item);
@@ -243,8 +243,8 @@ where
                 }
             }
             SymmetricDifference(l_iter, r_iter) => {
-                while let Some(l_item) = l_iter.peek() {
-                    if let Some(r_item) = r_iter.peek() {
+                while let Some(l_item) = l_iter.peep() {
+                    if let Some(r_item) = r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
                                 return l_iter.next();
@@ -264,8 +264,8 @@ where
                 r_iter.next()
             }
             Union(l_iter, r_iter) => {
-                if let Some(l_item) = l_iter.peek() {
-                    if let Some(r_item) = r_iter.peek() {
+                if let Some(l_item) = l_iter.peep() {
+                    if let Some(r_item) = r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => l_iter.next(),
                             Ordering::Greater => r_iter.next(),
@@ -292,12 +292,12 @@ where
     L: OrdSetOpsIterator<'a, T>,
     R: OrdSetOpsIterator<'a, T>,
 {
-    fn peek(&mut self) -> Option<&'a T> {
+    fn peep(&mut self) -> Option<&'a T> {
         use OrdSetOpsIter::*;
         match self {
             Difference(l_iter, r_iter) => {
-                while let Some(l_item) = l_iter.peek() {
-                    if let Some(r_item) = r_iter.peek() {
+                while let Some(l_item) = l_iter.peep() {
+                    if let Some(r_item) = r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
                                 return Some(l_item);
@@ -317,16 +317,16 @@ where
                 None
             }
             Intersection(l_iter, r_iter) => {
-                if let Some(l_item) = l_iter.peek() {
-                    if let Some(r_item) = r_iter.peek() {
+                if let Some(l_item) = l_iter.peep() {
+                    if let Some(r_item) = r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
                                 l_iter.advance_until(r_item);
-                                l_iter.peek()
+                                l_iter.peep()
                             }
                             Ordering::Greater => {
                                 r_iter.advance_until(l_item);
-                                r_iter.peek()
+                                r_iter.peep()
                             }
                             Ordering::Equal => Some(l_item),
                         }
@@ -338,8 +338,8 @@ where
                 }
             }
             SymmetricDifference(l_iter, r_iter) => {
-                while let Some(l_item) = l_iter.peek() {
-                    if let Some(r_item) = r_iter.peek() {
+                while let Some(l_item) = l_iter.peep() {
+                    if let Some(r_item) = r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
                                 return Some(l_item);
@@ -356,11 +356,11 @@ where
                         return Some(l_item);
                     }
                 }
-                r_iter.peek()
+                r_iter.peep()
             }
             Union(l_iter, r_iter) => {
-                if let Some(l_item) = l_iter.peek() {
-                    if let Some(r_item) = r_iter.peek() {
+                if let Some(l_item) = l_iter.peep() {
+                    if let Some(r_item) = r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less | Ordering::Equal => Some(l_item),
                             Ordering::Greater => Some(r_item),
@@ -369,7 +369,7 @@ where
                         Some(l_item)
                     }
                 } else {
-                    r_iter.peek()
+                    r_iter.peep()
                 }
             }
             Bogus(_) => panic!("'Bogus' should never be used"),
@@ -500,7 +500,7 @@ mod tests {
             };
         }
 
-        fn peek(&mut self) -> Option<&'a T> {
+        fn peep(&mut self) -> Option<&'a T> {
             self.elements.get(self.index)
         }
     }
