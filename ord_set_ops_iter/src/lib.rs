@@ -26,27 +26,48 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
     /// Iterate over the set difference of this Iterator and the given Iterator
     /// in the order defined by their elements `Ord` trait implementation.
     fn difference<I: OrdSetOpsIterator<'a, T>>(self, iter: I) -> OrdSetOpsIter<'a, T, Self, I> {
-        OrdSetOpsIter::Difference(self, iter)
+        OrdSetOpsIter {
+            l_iter: self,
+            r_iter: iter,
+            set_operation: SetOperation::Difference,
+            phantom: PhantomData,
+        }
     }
 
     /// Iterate over the set intersection of this Iterator and the given Iterator
     /// in the order defined by their elements `Ord` trait implementation.
     fn intersection<I: OrdSetOpsIterator<'a, T>>(self, iter: I) -> OrdSetOpsIter<'a, T, Self, I> {
-        OrdSetOpsIter::Intersection(self, iter)
+        OrdSetOpsIter {
+            l_iter: self,
+            r_iter: iter,
+            set_operation: SetOperation::Intersection,
+            phantom: PhantomData,
+        }
     }
+
     /// Iterate over the set difference of this Iterator and the given Iterator
     /// in the order defined by their elements `Ord` trait implementation.
     fn symmetric_difference<I: OrdSetOpsIterator<'a, T>>(
         self,
         iter: I,
     ) -> OrdSetOpsIter<'a, T, Self, I> {
-        OrdSetOpsIter::SymmetricDifference(self, iter)
+        OrdSetOpsIter {
+            l_iter: self,
+            r_iter: iter,
+            set_operation: SetOperation::SymmetricDifference,
+            phantom: PhantomData,
+        }
     }
 
     /// Iterate over the set union of this Iterator and the given Iterator
     /// in the order defined by their elements `Ord` trait implementation.
     fn union<I: OrdSetOpsIterator<'a, T>>(self, iter: I) -> OrdSetOpsIter<'a, T, Self, I> {
-        OrdSetOpsIter::Union(self, iter)
+        OrdSetOpsIter {
+            l_iter: self,
+            r_iter: iter,
+            set_operation: SetOperation::Union,
+            phantom: PhantomData,
+        }
     }
 
     /// Is the output of the given Iterator disjoint from the output of
@@ -176,17 +197,24 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
     }
 }
 
-pub enum OrdSetOpsIter<'a, T, L, R>
+#[derive(Debug, Clone, Copy)]
+pub enum SetOperation {
+    Difference,
+    Intersection,
+    SymmetricDifference,
+    Union,
+}
+
+pub struct OrdSetOpsIter<'a, T, L, R>
 where
     T: 'a + Ord,
     L: OrdSetOpsIterator<'a, T>,
     R: OrdSetOpsIterator<'a, T>,
 {
-    Difference(L, R),
-    Intersection(L, R),
-    SymmetricDifference(L, R),
-    Union(L, R),
-    Bogus(PhantomData<&'a T>),
+    l_iter: L,
+    r_iter: R,
+    set_operation: SetOperation,
+    phantom: PhantomData<&'a T>,
 }
 
 impl<'a, T, L, R> Iterator for OrdSetOpsIter<'a, T, L, R>
@@ -198,42 +226,42 @@ where
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        use OrdSetOpsIter::*;
-        match self {
-            Difference(l_iter, r_iter) => {
-                while let Some(l_item) = l_iter.peep() {
-                    if let Some(r_item) = r_iter.peep() {
+        use SetOperation::*;
+        match self.set_operation {
+            Difference => {
+                while let Some(l_item) = self.l_iter.peep() {
+                    if let Some(r_item) = self.r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
-                                return l_iter.next();
+                                return self.l_iter.next();
                             }
                             Ordering::Greater => {
-                                r_iter.advance_until(l_item);
+                                self.r_iter.advance_until(l_item);
                             }
                             Ordering::Equal => {
-                                l_iter.next();
-                                r_iter.next();
+                                self.l_iter.next();
+                                self.r_iter.next();
                             }
                         }
                     } else {
-                        return l_iter.next();
+                        return self.l_iter.next();
                     }
                 }
                 None
             }
-            Intersection(l_iter, r_iter) => {
-                if let Some(l_item) = l_iter.peep() {
-                    if let Some(r_item) = r_iter.peep() {
+            Intersection => {
+                if let Some(l_item) = self.l_iter.peep() {
+                    if let Some(r_item) = self.r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
-                                l_iter.advance_until(r_item);
-                                l_iter.next()
+                                self.l_iter.advance_until(r_item);
+                                self.l_iter.next()
                             }
                             Ordering::Greater => {
-                                r_iter.advance_until(l_item);
-                                r_iter.next()
+                                self.r_iter.advance_until(l_item);
+                                self.r_iter.next()
                             }
-                            Ordering::Equal => l_iter.next(),
+                            Ordering::Equal => self.l_iter.next(),
                         }
                     } else {
                         None
@@ -242,46 +270,45 @@ where
                     None
                 }
             }
-            SymmetricDifference(l_iter, r_iter) => {
-                while let Some(l_item) = l_iter.peep() {
-                    if let Some(r_item) = r_iter.peep() {
+            SymmetricDifference => {
+                while let Some(l_item) = self.l_iter.peep() {
+                    if let Some(r_item) = self.r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
-                                return l_iter.next();
+                                return self.l_iter.next();
                             }
                             Ordering::Greater => {
-                                return r_iter.next();
+                                return self.r_iter.next();
                             }
                             Ordering::Equal => {
-                                l_iter.next();
-                                r_iter.next();
+                                self.l_iter.next();
+                                self.r_iter.next();
                             }
                         }
                     } else {
-                        return l_iter.next();
+                        return self.l_iter.next();
                     }
                 }
-                r_iter.next()
+                self.r_iter.next()
             }
-            Union(l_iter, r_iter) => {
-                if let Some(l_item) = l_iter.peep() {
-                    if let Some(r_item) = r_iter.peep() {
+            Union => {
+                if let Some(l_item) = self.l_iter.peep() {
+                    if let Some(r_item) = self.r_iter.peep() {
                         match l_item.cmp(r_item) {
-                            Ordering::Less => l_iter.next(),
-                            Ordering::Greater => r_iter.next(),
+                            Ordering::Less => self.l_iter.next(),
+                            Ordering::Greater => self.r_iter.next(),
                             Ordering::Equal => {
-                                r_iter.next();
-                                l_iter.next()
+                                self.r_iter.next();
+                                self.l_iter.next()
                             }
                         }
                     } else {
-                        l_iter.next()
+                        self.l_iter.next()
                     }
                 } else {
-                    r_iter.next()
+                    self.r_iter.next()
                 }
             }
-            Bogus(_) => panic!("'Bogus' should never be used"),
         }
     }
 }
@@ -293,21 +320,21 @@ where
     R: OrdSetOpsIterator<'a, T>,
 {
     fn peep(&mut self) -> Option<&'a T> {
-        use OrdSetOpsIter::*;
-        match self {
-            Difference(l_iter, r_iter) => {
-                while let Some(l_item) = l_iter.peep() {
-                    if let Some(r_item) = r_iter.peep() {
+        use SetOperation::*;
+        match self.set_operation {
+            Difference => {
+                while let Some(l_item) = self.l_iter.peep() {
+                    if let Some(r_item) = self.r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
                                 return Some(l_item);
                             }
                             Ordering::Greater => {
-                                r_iter.advance_until(l_item);
+                                self.r_iter.advance_until(l_item);
                             }
                             Ordering::Equal => {
-                                l_iter.next();
-                                r_iter.next();
+                                self.l_iter.next();
+                                self.r_iter.next();
                             }
                         }
                     } else {
@@ -316,17 +343,17 @@ where
                 }
                 None
             }
-            Intersection(l_iter, r_iter) => {
-                if let Some(l_item) = l_iter.peep() {
-                    if let Some(r_item) = r_iter.peep() {
+            Intersection => {
+                if let Some(l_item) = self.l_iter.peep() {
+                    if let Some(r_item) = self.r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
-                                l_iter.advance_until(r_item);
-                                l_iter.peep()
+                                self.l_iter.advance_until(r_item);
+                                self.l_iter.peep()
                             }
                             Ordering::Greater => {
-                                r_iter.advance_until(l_item);
-                                r_iter.peep()
+                                self.r_iter.advance_until(l_item);
+                                self.r_iter.peep()
                             }
                             Ordering::Equal => Some(l_item),
                         }
@@ -337,9 +364,9 @@ where
                     None
                 }
             }
-            SymmetricDifference(l_iter, r_iter) => {
-                while let Some(l_item) = l_iter.peep() {
-                    if let Some(r_item) = r_iter.peep() {
+            SymmetricDifference => {
+                while let Some(l_item) = self.l_iter.peep() {
+                    if let Some(r_item) = self.r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
                                 return Some(l_item);
@@ -348,19 +375,19 @@ where
                                 return Some(r_item);
                             }
                             Ordering::Equal => {
-                                l_iter.next();
-                                r_iter.next();
+                                self.l_iter.next();
+                                self.r_iter.next();
                             }
                         }
                     } else {
                         return Some(l_item);
                     }
                 }
-                r_iter.peep()
+                self.r_iter.peep()
             }
-            Union(l_iter, r_iter) => {
-                if let Some(l_item) = l_iter.peep() {
-                    if let Some(r_item) = r_iter.peep() {
+            Union => {
+                if let Some(l_item) = self.l_iter.peep() {
+                    if let Some(r_item) = self.r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less | Ordering::Equal => Some(l_item),
                             Ordering::Greater => Some(r_item),
@@ -369,34 +396,15 @@ where
                         Some(l_item)
                     }
                 } else {
-                    r_iter.peep()
+                    self.r_iter.peep()
                 }
             }
-            Bogus(_) => panic!("'Bogus' should never be used"),
         }
     }
 
     fn advance_until(&mut self, t: &T) {
-        use OrdSetOpsIter::*;
-        match self {
-            Difference(l_iter, r_iter) => {
-                l_iter.advance_until(t);
-                r_iter.advance_until(t);
-            }
-            Intersection(l_iter, r_iter) => {
-                l_iter.advance_until(t);
-                r_iter.advance_until(t);
-            }
-            SymmetricDifference(l_iter, r_iter) => {
-                l_iter.advance_until(t);
-                r_iter.advance_until(t);
-            }
-            Union(l_iter, r_iter) => {
-                l_iter.advance_until(t);
-                r_iter.advance_until(t);
-            }
-            Bogus(_) => panic!("'Bogus' should never be used"),
-        };
+        self.l_iter.advance_until(t);
+        self.r_iter.advance_until(t);
     }
 }
 
