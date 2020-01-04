@@ -2,6 +2,7 @@
 
 pub use std::{
     collections::btree_set,
+    iter::Peekable,
     ops::{BitAnd, BitOr, BitXor, Sub},
 };
 
@@ -21,30 +22,23 @@ impl<'a, T: Ord> OrdSetOpsIterAdaptation for btree_set::SymmetricDifference<'a, 
 impl<'a, T: Ord> OrdSetOpsIterAdaptation for btree_set::Union<'a, T> {}
 
 pub struct OrdSetOpsIterAdapter<I: Iterator> {
-    iter: I,
-    peek: Option<I::Item>,
+    iter: Peekable<I>,
 }
 
 impl<I: Iterator> OrdSetOpsIterAdapter<I> {
-    pub fn new(mut iter: I) -> Self {
-        let peek = iter.next();
-        Self { iter, peek }
+    pub fn new(iter: I) -> Self {
+        Self {
+            iter: iter.peekable(),
+        }
     }
 }
 
 impl<I: Iterator> Iterator for OrdSetOpsIterAdapter<I> {
     type Item = I::Item;
 
-    // NB: next() does all the work as it will get called less often
-    // than peek() when doing set operation iterations
+    #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        match self.peek.take() {
-            Some(item) => {
-                self.peek = self.iter.next();
-                Some(item)
-            }
-            None => None,
-        }
+        self.iter.next()
     }
 }
 
@@ -55,20 +49,10 @@ where
 {
     #[inline]
     fn peek(&mut self) -> Option<&'a T> {
-        self.peek
-    }
-
-    fn advance_until(&mut self, t: &T) {
-        if let Some(item) = self.peek {
-            if t > item {
-                while let Some(inner) = self.iter.next() {
-                    if t <= inner {
-                        self.peek = Some(inner);
-                        return;
-                    }
-                }
-                self.peek = None;
-            }
+        if let Some(item) = self.iter.peek() {
+            Some(*item)
+        } else {
+            None
         }
     }
 }
