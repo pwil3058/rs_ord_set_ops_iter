@@ -2,4 +2,5 @@
 
 members = [
     "ord_set_ops_iter",
+    "ord_list_set",
 ]
