@@ -1,7 +1,7 @@
 // Copyright 2020 Peter Williams <pwil3058@gmail.com> <pwil3058@bigpond.net.au>
 //! Sets implemented as a sorted list.
 
-use std::iter::FromIterator;
+use std::{iter::FromIterator, ops::BitOr};
 
 use ord_set_ops_iter::OrdSetOpsIterator;
 
@@ -38,12 +38,40 @@ impl<T: Ord> OrdListSet<T> {
     }
 }
 
+impl<T: Ord> From<Vec<T>> for OrdListSet<T> {
+    fn from(mut members: Vec<T>) -> Self {
+        members.sort_unstable();
+        members.dedup();
+        Self { members }
+    }
+}
+
 impl<T: Ord> FromIterator<T> for OrdListSet<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut members: Vec<T> = iter.into_iter().collect();
-        members.sort();
+        members.sort_unstable();
         members.dedup();
         Self { members }
+    }
+}
+
+impl<T: Ord + Clone> BitOr<&OrdListSet<T>> for &OrdListSet<T> {
+    type Output = OrdListSet<T>;
+
+    /// Returns the union of `self` and `rhs` as a new `OrdListSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ord_list_set::OrdListSet;
+    ///
+    /// let a = OrdListSet::<u32>::from(vec![1, 2, 3]);
+    /// let b = OrdListSet::<u32>::from(vec![2, 3, 4]);
+    ///
+    /// assert_eq!(&a | &b, OrdListSet::<u32>::from(vec![1, 2, 3, 4]));
+    /// ```
+    fn bitor(self, rhs: &OrdListSet<T>) -> OrdListSet<T> {
+        self.union(rhs).cloned().collect()
     }
 }
 
@@ -67,15 +95,18 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
 }
 
 impl<'a, T: 'a + Ord> OrdSetOpsIterator<'a, T> for OrdListSetIter<'a, T> {
+    /// Peep at the next item in the iterator without advancing the iterator.
+    fn peep(&mut self) -> Option<&'a T> {
+        self.elements.get(self.index)
+    }
+
+    /// Advance this iterator to the next item at or after the given item.
+    /// Implementation is O(log(n)).
     fn advance_until(&mut self, t: &T) {
         self.index += match self.elements[self.index..].binary_search(t) {
             Ok(index) => index,
             Err(index) => index,
         };
-    }
-
-    fn peep(&mut self) -> Option<&'a T> {
-        self.elements.get(self.index)
     }
 }
 

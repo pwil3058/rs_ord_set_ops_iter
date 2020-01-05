@@ -1,18 +1,20 @@
 // Copyright 2019 Peter Williams <pwil3058@gmail.com> <pwil3058@bigpond.net.au>
 
-pub use std::ops::{BitAnd, BitOr, BitXor, Sub};
-use std::{cmp::Ordering, marker::PhantomData};
+use std::{
+    cmp::Ordering,
+    marker::PhantomData,
+    ops::{BitAnd, BitOr, BitXor, Sub},
+};
 
 pub mod adapter;
 
 /// Ordered Iterator over set operations on the contents of an ordered set.
 pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
-    /// Peek at the next item in the iterator without advancing the iterator.
+    /// Peep at the next item in the iterator without advancing the iterator.
     fn peep(&mut self) -> Option<&'a T>;
 
-    /// Advance this iterator to the next item at or after the given item and
-    /// return a pointer to this iterator. Default implementation is O(n) but
-    /// custom built implementations could be as good as O(log(n)).
+    /// Advance this iterator to the next item at or after the given item.
+    /// Default implementation is O(n) but custom built implementations could be as good as O(log(n)).
     fn advance_until(&mut self, t: &T) {
         while let Some(item) = self.peep() {
             if t > item {
