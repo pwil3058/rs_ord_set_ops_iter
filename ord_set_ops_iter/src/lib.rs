@@ -252,25 +252,25 @@ where
                 None
             }
             Intersection => {
-                if let Some(l_item) = self.l_iter.peep() {
+                while let Some(l_item) = self.l_iter.peep() {
                     if let Some(r_item) = self.r_iter.peep() {
                         match l_item.cmp(r_item) {
                             Ordering::Less => {
                                 self.l_iter.advance_until(r_item);
-                                self.l_iter.next()
                             }
                             Ordering::Greater => {
                                 self.r_iter.advance_until(l_item);
-                                self.r_iter.next()
                             }
-                            Ordering::Equal => self.l_iter.next(),
+                            Ordering::Equal => {
+                                self.r_iter.next();
+                                return self.l_iter.next();
+                            }
                         }
                     } else {
-                        None
+                        return None;
                     }
-                } else {
-                    None
                 }
+                None
             }
             SymmetricDifference => {
                 while let Some(l_item) = self.l_iter.peep() {
@@ -573,6 +573,14 @@ mod tests {
             (set2.iter().intersection(set1.iter()))
                 .cloned()
                 .collect::<Vec<&str>>()
+        );
+        let set1 = Set::<u32>::from(vec![1, 2, 3, 5]);
+        let set2 = Set::<u32>::from(vec![2, 3, 4]);
+        assert_eq!(
+            vec![2, 3],
+            (set2.iter().intersection(set1.iter()))
+                .cloned()
+                .collect::<Vec<u32>>()
         );
     }
 
