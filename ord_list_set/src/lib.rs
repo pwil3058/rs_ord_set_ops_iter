@@ -30,6 +30,11 @@ impl<T: Ord> OrdListSet<T> {
         self.members.len()
     }
 
+    /// Return `true` if the set is empty.
+    pub fn is_empty(&self) -> bool {
+        self.members.is_empty()
+    }
+
     /// Return an iterator over the members in the `OrdListSet` in ascending order.
     pub fn iter(&self) -> OrdListSetIter<'_, T> {
         OrdListSetIter {
