@@ -9,7 +9,10 @@ pub use std::{
 use crate::adapter::btree_set::BTreeSet;
 pub use crate::{OrdSetOpsIter, OrdSetOpsIterator};
 
-pub trait OrdSetOpsIterAdaptation: Iterator + Sized {
+pub trait OrdSetOpsIterAdaptation: Iterator + Sized + Clone
+where
+    Self::Item: Clone,
+{
     fn ord_set_ops(self) -> OrdSetOpsIterAdapter<Self> {
         OrdSetOpsIterAdapter::from(self)
     }
@@ -21,13 +24,18 @@ impl<'a, T: Ord> OrdSetOpsIterAdaptation for btree_set::Intersection<'a, T> {}
 impl<'a, T: Ord> OrdSetOpsIterAdaptation for btree_set::SymmetricDifference<'a, T> {}
 impl<'a, T: Ord> OrdSetOpsIterAdaptation for btree_set::Union<'a, T> {}
 
-pub struct OrdSetOpsIterAdapter<I: Iterator> {
+#[derive(Clone)]
+pub struct OrdSetOpsIterAdapter<I: Iterator + Clone>
+where
+    I::Item: Clone,
+{
     iter: Peekable<I>,
 }
 
 impl<I> From<I> for OrdSetOpsIterAdapter<I>
 where
-    I: Iterator,
+    I: Iterator + Clone,
+    I::Item: Clone,
 {
     fn from(iter: I) -> Self {
         Self {
@@ -36,7 +44,10 @@ where
     }
 }
 
-impl<I: Iterator> Iterator for OrdSetOpsIterAdapter<I> {
+impl<I: Iterator + Clone> Iterator for OrdSetOpsIterAdapter<I>
+where
+    I::Item: Clone,
+{
     type Item = I::Item;
 
     #[inline]
@@ -47,8 +58,8 @@ impl<I: Iterator> Iterator for OrdSetOpsIterAdapter<I> {
 
 impl<'a, T, I> OrdSetOpsIterator<'a, T> for OrdSetOpsIterAdapter<I>
 where
-    T: Ord + 'a,
-    I: Iterator<Item = &'a T>,
+    T: Ord + 'a + Clone,
+    I: Iterator<Item = &'a T> + Clone,
 {
     #[inline]
     fn peep(&mut self) -> Option<&'a T> {
@@ -62,8 +73,8 @@ where
 
 impl<'a, T, I, O> BitAnd<O> for OrdSetOpsIterAdapter<I>
 where
-    T: Ord + 'a,
-    I: Iterator<Item = &'a T>,
+    T: Ord + 'a + Clone,
+    I: Iterator<Item = &'a T> + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
@@ -76,8 +87,8 @@ where
 
 impl<'a, T, I, O> BitOr<O> for OrdSetOpsIterAdapter<I>
 where
-    T: Ord + 'a,
-    I: Iterator<Item = &'a T>,
+    T: Ord + 'a + Clone,
+    I: Iterator<Item = &'a T> + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
@@ -90,8 +101,8 @@ where
 
 impl<'a, T, I, O> BitXor<O> for OrdSetOpsIterAdapter<I>
 where
-    T: Ord + 'a,
-    I: Iterator<Item = &'a T>,
+    T: Ord + 'a + Clone,
+    I: Iterator<Item = &'a T> + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
@@ -104,8 +115,8 @@ where
 
 impl<'a, T, I, O> Sub<O> for OrdSetOpsIterAdapter<I>
 where
-    T: Ord + 'a,
-    I: Iterator<Item = &'a T>,
+    T: Ord + 'a + Clone,
+    I: Iterator<Item = &'a T> + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
@@ -118,8 +129,8 @@ where
 
 pub trait OrdSetOpsSetAdaption<'a, T: 'a + Ord, I>
 where
-    T: 'a + Ord,
-    I: Iterator<Item = &'a T>,
+    T: 'a + Ord + Clone,
+    I: Iterator<Item = &'a T> + Clone,
 {
     fn oso_iter(&'a self) -> OrdSetOpsIterAdapter<I>;
 
@@ -152,7 +163,7 @@ where
     }
 }
 
-impl<'a, T: 'a + Ord> OrdSetOpsSetAdaption<'a, T, btree_set::Iter<'a, T>> for BTreeSet<T> {
+impl<'a, T: 'a + Ord + Clone> OrdSetOpsSetAdaption<'a, T, btree_set::Iter<'a, T>> for BTreeSet<T> {
     fn oso_iter(&'a self) -> OrdSetOpsIterAdapter<btree_set::Iter<'a, T>> {
         self.iter().into()
     }
@@ -167,10 +178,10 @@ mod tests {
     fn set_relations() {
         let iter1 = OrdSetOpsIterAdapter::from(["a", "b", "c", "d"].iter());
         let iter2 = OrdSetOpsIterAdapter::from(["b", "c", "d"].iter());
-        assert!(iter1.is_superset(iter2));
+        assert!(iter1.is_superset(&iter2));
         let iter1 = OrdSetOpsIterAdapter::from(["a", "b", "c", "d"].iter());
         let iter2 = OrdSetOpsIterAdapter::from(["b", "c", "d"].iter());
-        assert!(!iter1.is_subset(iter2));
+        assert!(!iter1.is_subset(&iter2));
     }
 
     #[test]

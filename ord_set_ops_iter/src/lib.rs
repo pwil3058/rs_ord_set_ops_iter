@@ -9,7 +9,9 @@ use std::{
 pub mod adapter;
 
 /// Ordered Iterator over set operations on the contents of an ordered set.
-pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
+pub trait OrdSetOpsIterator<'a, T: 'a + Ord + Clone>:
+    Iterator<Item = &'a T> + Sized + Clone
+{
     /// Peep at the next item in the iterator without advancing the iterator.
     fn peep(&mut self) -> Option<&'a T>;
 
@@ -74,16 +76,18 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
 
     /// Is the output of the given Iterator disjoint from the output of
     /// this iterator?
-    fn is_disjoint<I: OrdSetOpsIterator<'a, T>>(mut self, mut other: I) -> bool {
+    fn is_disjoint<I: OrdSetOpsIterator<'a, T> + Clone>(&self, other: &I) -> bool {
+        let mut me = self.clone();
+        let mut other = other.clone();
         loop {
-            if let Some(my_item) = self.peep() {
+            if let Some(my_item) = me.peep() {
                 if let Some(other_item) = other.peep() {
-                    match my_item.cmp(&other_item) {
+                    match my_item.cmp(other_item) {
                         Ordering::Less => {
-                            self.advance_until(other_item);
+                            me.advance_until(other_item);
                         }
                         Ordering::Greater => {
-                            other.advance_until(my_item);
+                            me.advance_until(my_item);
                         }
                         Ordering::Equal => {
                             return false;
@@ -100,11 +104,13 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
 
     /// Is the output of the given Iterator a proper subset of the output of
     /// this iterator?
-    fn is_proper_subset<I: OrdSetOpsIterator<'a, T>>(mut self, mut other: I) -> bool {
+    fn is_proper_subset<I: OrdSetOpsIterator<'a, T>>(&self, other: &I) -> bool {
+        let mut me = self.clone();
+        let mut other = other.clone();
         let mut result = false;
-        while let Some(my_item) = self.peep() {
+        while let Some(my_item) = me.peep() {
             if let Some(other_item) = other.peep() {
-                match my_item.cmp(&other_item) {
+                match my_item.cmp(other_item) {
                     Ordering::Less => {
                         return false;
                     }
@@ -114,7 +120,7 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
                     }
                     Ordering::Equal => {
                         other.next();
-                        self.next();
+                        me.next();
                     }
                 }
             } else {
@@ -126,21 +132,23 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
 
     /// Is the output of the given Iterator a proper superset of the output of
     /// this iterator?
-    fn is_proper_superset<I: OrdSetOpsIterator<'a, T>>(mut self, mut other: I) -> bool {
+    fn is_proper_superset<I: OrdSetOpsIterator<'a, T>>(&self, other: &I) -> bool {
+        let mut me = self.clone();
+        let mut other = other.clone();
         let mut result = false;
-        while let Some(my_item) = self.peep() {
+        while let Some(my_item) = me.peep() {
             if let Some(other_item) = other.peep() {
-                match my_item.cmp(&other_item) {
+                match my_item.cmp(other_item) {
                     Ordering::Less => {
                         result = true;
-                        self.advance_until(other_item);
+                        me.advance_until(other_item);
                     }
                     Ordering::Greater => {
                         return false;
                     }
                     Ordering::Equal => {
                         other.next();
-                        self.next();
+                        me.next();
                     }
                 }
             } else {
@@ -152,10 +160,12 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
 
     /// Is the output of the given Iterator a subset of the output of
     /// this iterator?
-    fn is_subset<I: OrdSetOpsIterator<'a, T>>(mut self, mut other: I) -> bool {
-        while let Some(my_item) = self.peep() {
+    fn is_subset<I: OrdSetOpsIterator<'a, T>>(&self, other: &I) -> bool {
+        let mut me = self.clone();
+        let mut other = other.clone();
+        while let Some(my_item) = me.peep() {
             if let Some(other_item) = other.peep() {
-                match my_item.cmp(&other_item) {
+                match my_item.cmp(other_item) {
                     Ordering::Less => {
                         return false;
                     }
@@ -164,7 +174,7 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
                     }
                     Ordering::Equal => {
                         other.next();
-                        self.next();
+                        me.next();
                     }
                 }
             } else {
@@ -176,19 +186,21 @@ pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized {
 
     /// Is the output of the given Iterator a superset of the output of
     /// this iterator?
-    fn is_superset<I: OrdSetOpsIterator<'a, T>>(mut self, mut other: I) -> bool {
-        while let Some(my_item) = self.peep() {
+    fn is_superset<I: OrdSetOpsIterator<'a, T>>(&self, other: &I) -> bool {
+        let mut me = self.clone();
+        let mut other = other.clone();
+        while let Some(my_item) = me.peep() {
             if let Some(other_item) = other.peep() {
-                match my_item.cmp(&other_item) {
+                match my_item.cmp(other_item) {
                     Ordering::Less => {
-                        self.advance_until(other_item);
+                        me.advance_until(other_item);
                     }
                     Ordering::Greater => {
                         return false;
                     }
                     Ordering::Equal => {
                         other.next();
-                        self.next();
+                        me.next();
                     }
                 }
             } else {
@@ -207,9 +219,10 @@ pub enum SetOperation {
     Union,
 }
 
+#[derive(Clone)]
 pub struct OrdSetOpsIter<'a, T, L, R>
 where
-    T: 'a + Ord,
+    T: 'a + Ord + Clone,
     L: OrdSetOpsIterator<'a, T>,
     R: OrdSetOpsIterator<'a, T>,
 {
@@ -221,7 +234,7 @@ where
 
 impl<'a, T, L, R> Iterator for OrdSetOpsIter<'a, T, L, R>
 where
-    T: 'a + Ord,
+    T: 'a + Ord + Clone,
     L: OrdSetOpsIterator<'a, T>,
     R: OrdSetOpsIterator<'a, T>,
 {
@@ -317,7 +330,7 @@ where
 
 impl<'a, T, L, R> OrdSetOpsIterator<'a, T> for OrdSetOpsIter<'a, T, L, R>
 where
-    T: 'a + Ord,
+    T: 'a + Ord + Clone,
     L: OrdSetOpsIterator<'a, T>,
     R: OrdSetOpsIterator<'a, T>,
 {
@@ -412,7 +425,7 @@ where
 
 impl<'a, T, L, R, O> BitAnd<O> for OrdSetOpsIter<'a, T, L, R>
 where
-    T: Ord + 'a,
+    T: Ord + 'a + Clone,
     L: OrdSetOpsIterator<'a, T>,
     R: OrdSetOpsIterator<'a, T>,
     O: OrdSetOpsIterator<'a, T>,
@@ -427,7 +440,7 @@ where
 
 impl<'a, T, L, R, O> BitOr<O> for OrdSetOpsIter<'a, T, L, R>
 where
-    T: Ord + 'a,
+    T: Ord + 'a + Clone,
     L: OrdSetOpsIterator<'a, T>,
     R: OrdSetOpsIterator<'a, T>,
     O: OrdSetOpsIterator<'a, T>,
@@ -442,7 +455,7 @@ where
 
 impl<'a, T, L, R, O> BitXor<O> for OrdSetOpsIter<'a, T, L, R>
 where
-    T: Ord + 'a,
+    T: Ord + 'a + Clone,
     L: OrdSetOpsIterator<'a, T>,
     R: OrdSetOpsIterator<'a, T>,
     O: OrdSetOpsIterator<'a, T>,
@@ -457,7 +470,7 @@ where
 
 impl<'a, T, L, R, O> Sub<O> for OrdSetOpsIter<'a, T, L, R>
 where
-    T: Ord + 'a,
+    T: Ord + 'a + Clone,
     L: OrdSetOpsIterator<'a, T>,
     R: OrdSetOpsIterator<'a, T>,
     O: OrdSetOpsIterator<'a, T>,
@@ -484,12 +497,13 @@ mod tests {
         }
     }
 
-    struct SetIter<'a, T: Ord> {
+    #[derive(Clone)]
+    struct SetIter<'a, T: Ord + Clone> {
         elements: &'a [T],
         index: usize,
     }
 
-    impl<'a, T: Ord> Iterator for SetIter<'a, T> {
+    impl<'a, T: Ord + Clone> Iterator for SetIter<'a, T> {
         type Item = &'a T;
 
         fn next(&mut self) -> Option<Self::Item> {
@@ -502,7 +516,7 @@ mod tests {
         }
     }
 
-    impl<'a, T: 'a + Ord> OrdSetOpsIterator<'a, T> for SetIter<'a, T> {
+    impl<'a, T: 'a + Ord + Clone> OrdSetOpsIterator<'a, T> for SetIter<'a, T> {
         fn advance_until(&mut self, t: &T) {
             self.index += match self.elements[self.index..].binary_search(t) {
                 Ok(index) => index,
@@ -515,7 +529,7 @@ mod tests {
         }
     }
 
-    impl<T: Ord> Set<T> {
+    impl<T: Ord + Clone> Set<T> {
         pub fn iter(&self) -> SetIter<T> {
             SetIter {
                 elements: &self.0,
@@ -524,11 +538,11 @@ mod tests {
         }
 
         pub fn is_superset(&self, other: &Self) -> bool {
-            self.iter().is_superset(other.iter())
+            self.iter().is_superset(&other.iter())
         }
 
         pub fn is_subset(&self, other: &Self) -> bool {
-            self.iter().is_subset(other.iter())
+            self.iter().is_subset(&other.iter())
         }
     }
 

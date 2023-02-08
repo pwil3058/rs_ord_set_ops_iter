@@ -24,7 +24,7 @@ impl<T: Ord + Clone> OrdListSet<T> {
     }
 }
 
-impl<T: Ord> OrdListSet<T> {
+impl<T: Ord + Clone> OrdListSet<T> {
     /// Return number of members in this set.
     pub fn len(&self) -> usize {
         self.members.len()
@@ -236,12 +236,13 @@ impl<T: Ord + Clone> BitOr<&OrdListSet<T>> for &OrdListSet<T> {
 /// assert_eq!(fast_way, slow_way);
 /// assert_eq!(fast_way, chain_way);
 /// ```
-pub struct OrdListSetIter<'a, T: Ord> {
+#[derive(Clone)]
+pub struct OrdListSetIter<'a, T: Ord + Clone> {
     elements: &'a [T],
     index: usize,
 }
 
-impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
+impl<'a, T: Ord + Clone> Iterator for OrdListSetIter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -254,7 +255,7 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
     }
 }
 
-impl<'a, T: 'a + Ord> OrdSetOpsIterator<'a, T> for OrdListSetIter<'a, T> {
+impl<'a, T: 'a + Ord + Clone> OrdSetOpsIterator<'a, T> for OrdListSetIter<'a, T> {
     /// Peep at the next item in the iterator without advancing the iterator.
     fn peep(&mut self) -> Option<&'a T> {
         self.elements.get(self.index)
@@ -272,7 +273,7 @@ impl<'a, T: 'a + Ord> OrdSetOpsIterator<'a, T> for OrdListSetIter<'a, T> {
 
 impl<'a, T, O> Sub<O> for OrdListSetIter<'a, T>
 where
-    T: Ord + 'a,
+    T: Ord + 'a + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
@@ -299,7 +300,7 @@ where
 
 impl<'a, T, O> BitAnd<O> for OrdListSetIter<'a, T>
 where
-    T: Ord + 'a,
+    T: Ord + 'a + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
@@ -326,7 +327,7 @@ where
 
 impl<'a, T, O> BitXor<O> for OrdListSetIter<'a, T>
 where
-    T: Ord + 'a,
+    T: Ord + 'a + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
@@ -353,7 +354,7 @@ where
 
 impl<'a, T, O> BitOr<O> for OrdListSetIter<'a, T>
 where
-    T: Ord + 'a,
+    T: Ord + 'a + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
     type Output = OrdSetOpsIter<'a, T, Self, O>;
