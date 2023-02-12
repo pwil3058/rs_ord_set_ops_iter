@@ -1,11 +1,12 @@
 // Copyright 2020 Peter Williams <pwil3058@gmail.com> <pwil3058@bigpond.net.au>
 
 pub use std::{
-    collections::btree_set,
+    collections::{btree_map, btree_set},
     iter::Peekable,
     ops::{BitAnd, BitOr, BitXor, Sub},
 };
 
+use crate::adapter::btree_map::BTreeMap;
 use crate::adapter::btree_set::BTreeSet;
 pub use crate::{OrdSetOpsIter, OrdSetOpsIterator};
 
@@ -169,6 +170,22 @@ impl<'a, T: 'a + Ord + Clone> OrdSetOpsSetAdaption<'a, T, btree_set::Iter<'a, T>
     }
 }
 
+pub trait OrdSetOpsMapAdaption<'a, T: 'a + Ord, I>
+where
+    T: 'a + Ord + Clone,
+    I: Iterator<Item = &'a T> + Clone,
+{
+    fn oso_keys(&'a self) -> OrdSetOpsIterAdapter<I>;
+}
+
+impl<'a, K: 'a + Ord + Clone, V> OrdSetOpsMapAdaption<'a, K, btree_map::Keys<'a, K, V>>
+    for BTreeMap<K, V>
+{
+    fn oso_keys(&'a self) -> OrdSetOpsIterAdapter<btree_map::Keys<'a, K, V>> {
+        self.keys().into()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::OrdSetOpsIterAdapter;
@@ -287,12 +304,12 @@ mod tests {
 
 #[cfg(test)]
 mod b_tree_set_tests {
-    use std::collections::BTreeSet;
+    use std::collections::{BTreeMap, BTreeSet};
 
     use super::*;
 
     #[test]
-    fn iterator_adapter() {
+    fn set_iterator_adapter() {
         let set1: BTreeSet<&str> = ["a", "b", "c", "g", "e", "f"].iter().cloned().collect();
         let set2: BTreeSet<&str> = ["c", "f", "i", "l"].iter().cloned().collect();
         let set3: BTreeSet<&str> = ["c", "e", "i"].iter().cloned().collect();
@@ -352,6 +369,27 @@ mod b_tree_set_tests {
         assert_eq!(
             result,
             (set1.oso_union(&set2) & set3.oso_iter()).cloned().collect()
+        );
+    }
+
+    #[test]
+    fn map_adapter() {
+        let map1: BTreeMap<&str, i32> =
+            [("a", 1), ("b", 1), ("c", 1), ("g", 1), ("e", 1), ("f", 1)]
+                .iter()
+                .cloned()
+                .collect();
+        let map2: BTreeMap<&str, i32> = [("c", 1), ("f", 1), ("i", 1), ("l", 1)]
+            .iter()
+            .cloned()
+            .collect();
+        let map3: BTreeMap<&str, i32> = [("c", 1), ("e", 1), ("i", 1)].iter().cloned().collect();
+        let expected: BTreeSet<&str> = ["c", "e", "i"].into();
+        assert_eq!(
+            expected,
+            ((map1.oso_keys() | map2.oso_keys()) & map3.oso_keys())
+                .cloned()
+                .collect()
         );
     }
 }
