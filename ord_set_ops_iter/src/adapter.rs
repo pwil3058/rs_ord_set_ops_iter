@@ -59,7 +59,7 @@ where
 
 impl<'a, T, I> OrdSetOpsIterator<'a, T> for OrdSetOpsIterAdapter<I>
 where
-    T: Ord + 'a + Clone,
+    T: Ord + 'a,
     I: Iterator<Item = &'a T> + Clone,
 {
     #[inline]
@@ -74,7 +74,7 @@ where
 
 impl<'a, T, I, O> BitAnd<O> for OrdSetOpsIterAdapter<I>
 where
-    T: Ord + 'a + Clone,
+    T: Ord + 'a,
     I: Iterator<Item = &'a T> + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
@@ -88,7 +88,7 @@ where
 
 impl<'a, T, I, O> BitOr<O> for OrdSetOpsIterAdapter<I>
 where
-    T: Ord + 'a + Clone,
+    T: Ord + 'a,
     I: Iterator<Item = &'a T> + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
@@ -102,7 +102,7 @@ where
 
 impl<'a, T, I, O> BitXor<O> for OrdSetOpsIterAdapter<I>
 where
-    T: Ord + 'a + Clone,
+    T: Ord + 'a,
     I: Iterator<Item = &'a T> + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
@@ -116,7 +116,7 @@ where
 
 impl<'a, T, I, O> Sub<O> for OrdSetOpsIterAdapter<I>
 where
-    T: Ord + 'a + Clone,
+    T: Ord + 'a,
     I: Iterator<Item = &'a T> + Clone,
     O: OrdSetOpsIterator<'a, T>,
 {
@@ -130,10 +130,15 @@ where
 
 pub trait OrdSetOpsSetAdaption<'a, T: 'a + Ord, I>
 where
-    T: 'a + Ord + Clone,
+    T: 'a + Ord,
     I: Iterator<Item = &'a T> + Clone,
 {
     fn oso_iter(&'a self) -> OrdSetOpsIterAdapter<I>;
+
+    fn oso_iter_mapped<M, F>(&'a self, f: F) -> OrdSetOpsIterAdapter<std::iter::Map<I, F>>
+    where
+        F: FnMut(I::Item) -> M + Clone,
+        M: Clone;
 
     fn oso_difference(
         &'a self,
@@ -164,23 +169,32 @@ where
     }
 }
 
-impl<'a, T: 'a + Ord + Clone> OrdSetOpsSetAdaption<'a, T, btree_set::Iter<'a, T>> for BTreeSet<T> {
+impl<'a, T: 'a + Ord> OrdSetOpsSetAdaption<'a, T, btree_set::Iter<'a, T>> for BTreeSet<T> {
     fn oso_iter(&'a self) -> OrdSetOpsIterAdapter<btree_set::Iter<'a, T>> {
         self.iter().into()
+    }
+
+    fn oso_iter_mapped<M, F>(
+        &'a self,
+        f: F,
+    ) -> OrdSetOpsIterAdapter<std::iter::Map<btree_set::Iter<'a, T>, F>>
+    where
+        F: FnMut(<btree_set::Iter<'a, T> as Iterator>::Item) -> M + Clone,
+        M: Clone,
+    {
+        self.iter().map(f).into()
     }
 }
 
 pub trait OrdSetOpsMapAdaption<'a, T: 'a + Ord, I>
 where
-    T: 'a + Ord + Clone,
+    T: 'a + Ord,
     I: Iterator<Item = &'a T> + Clone,
 {
     fn oso_keys(&'a self) -> OrdSetOpsIterAdapter<I>;
 }
 
-impl<'a, K: 'a + Ord + Clone, V> OrdSetOpsMapAdaption<'a, K, btree_map::Keys<'a, K, V>>
-    for BTreeMap<K, V>
-{
+impl<'a, K: 'a + Ord, V> OrdSetOpsMapAdaption<'a, K, btree_map::Keys<'a, K, V>> for BTreeMap<K, V> {
     fn oso_keys(&'a self) -> OrdSetOpsIterAdapter<btree_map::Keys<'a, K, V>> {
         self.keys().into()
     }
@@ -370,6 +384,7 @@ mod b_tree_set_tests {
             result,
             (set1.oso_union(&set2) & set3.oso_iter()).cloned().collect()
         );
+        assert_eq!(BTreeSet::from([1]), set1.oso_iter_mapped(|_| 1).collect())
     }
 
     #[test]

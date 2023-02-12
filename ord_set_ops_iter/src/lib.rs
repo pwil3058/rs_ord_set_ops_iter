@@ -9,9 +9,7 @@ use std::{
 pub mod adapter;
 
 /// Ordered Iterator over set operations on the contents of an ordered set.
-pub trait OrdSetOpsIterator<'a, T: 'a + Ord + Clone>:
-    Iterator<Item = &'a T> + Sized + Clone
-{
+pub trait OrdSetOpsIterator<'a, T: 'a + Ord>: Iterator<Item = &'a T> + Sized + Clone {
     /// Peep at the next item in the iterator without advancing the iterator.
     fn peep(&mut self) -> Option<&'a T>;
 
@@ -222,7 +220,7 @@ pub enum SetOperation {
 #[derive(Clone)]
 pub struct OrdSetOpsIter<'a, T, L, R>
 where
-    T: 'a + Ord + Clone,
+    T: 'a + Ord,
     L: OrdSetOpsIterator<'a, T>,
     R: OrdSetOpsIterator<'a, T>,
 {
