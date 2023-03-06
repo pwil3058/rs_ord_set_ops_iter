@@ -169,6 +169,11 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
         self.members.first()
     }
 
+    pub fn first_and_tail(&self) -> Option<(&T, OrdListSet<T>)> {
+        let first = self.members.first()?;
+        Some((first, self.get_subset(1..)))
+    }
+
     /// Returns a reference to the last element in the set, if any. This element is always the maximum of all elements in the set.
     pub fn last(&self) -> Option<&T>
     where
@@ -528,6 +533,16 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for OrdListSetIter<'a, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn first_and_tail() {
+        let mut set1 = OrdListSet::<&str>::from(["a", "b", "c"]);
+        while let Some((key, tail)) = set1.first_and_tail() {
+            assert_eq!(set1.len(), tail.len() + 1);
+            assert!(!tail.contains(key));
+            set1 = tail;
+        }
+    }
 
     #[test]
     fn union() {
