@@ -470,6 +470,7 @@ impl<T: Ord> From<BTreeSet<T>> for OrdListSet<T> {
     }
 }
 
+#[allow(clippy::from_over_into)] // NB: we can't do from on an imported struct
 impl<T: Ord + Clone> Into<BTreeSet<T>> for OrdListSet<T> {
     fn into(self) -> BTreeSet<T> {
         BTreeSet::<T>::from_iter(self.iter().cloned())
