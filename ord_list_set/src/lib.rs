@@ -21,7 +21,7 @@ use error::Error;
 /// A set of items of type T ordered according to Ord (with no duplicates)
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OrdListSet<T: Ord> {
-    pub members: Vec<T>,
+    members: Vec<T>,
 }
 
 impl<T: Ord> Default for OrdListSet<T> {
