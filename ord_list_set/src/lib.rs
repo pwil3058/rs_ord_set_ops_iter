@@ -2,13 +2,18 @@
 //! Sets implemented as a sorted list.
 
 use std::{
+    cmp::Ordering,
     collections::BTreeSet,
     fmt::Debug,
     iter::FromIterator,
     ops::{BitAnd, BitOr, BitXor, RangeBounds, Sub},
 };
 
-use ord_set_iter_set_ops::{OrdSetOpsIter, PeepAdvanceIter, SetOsoIter};
+use ord_set_iter_set_ops::{
+    difference_next, difference_peep, intersection_next, intersection_peep,
+    symmetric_difference_next, symmetric_difference_peep, union_next, union_peep, OrdSetOpsIter,
+    PeepAdvanceIter, SetOsoIter,
+};
 
 pub mod error;
 use error::Error;
@@ -16,7 +21,7 @@ use error::Error;
 /// A set of items of type T ordered according to Ord (with no duplicates)
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OrdListSet<T: Ord> {
-    members: Vec<T>,
+    pub members: Vec<T>,
 }
 
 impl<T: Ord> Default for OrdListSet<T> {
@@ -183,6 +188,126 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     }
 }
 
+#[derive(Clone)]
+pub struct Union<'a, T: Ord> {
+    left_iter: OrdListSetIter<'a, T>,
+    right_iter: OrdListSetIter<'a, T>,
+}
+
+impl<'a, T: Ord> Iterator for Union<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        union_next!(self.left_iter, self.right_iter)
+    }
+}
+
+impl<'a, T: 'a + Ord + Clone> PeepAdvanceIter<'a, T> for Union<'a, T> {
+    fn peep(&mut self) -> Option<&'a T> {
+        union_peep!(self.left_iter, self.right_iter)
+    }
+
+    fn advance_until(&mut self, target: &T) {
+        self.left_iter.advance_until(target);
+        self.right_iter.advance_until(target)
+    }
+
+    fn advance_after(&mut self, target: &T) {
+        self.left_iter.advance_after(target);
+        self.right_iter.advance_after(target)
+    }
+}
+
+#[derive(Clone)]
+pub struct Intersection<'a, T: Ord> {
+    left_iter: OrdListSetIter<'a, T>,
+    right_iter: OrdListSetIter<'a, T>,
+}
+
+impl<'a, T: Ord> Iterator for Intersection<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        intersection_next!(self.left_iter, self.right_iter)
+    }
+}
+
+impl<'a, T: 'a + Ord + Clone> PeepAdvanceIter<'a, T> for Intersection<'a, T> {
+    fn peep(&mut self) -> Option<&'a T> {
+        intersection_peep!(self.left_iter, self.right_iter)
+    }
+
+    fn advance_until(&mut self, target: &T) {
+        self.left_iter.advance_until(target);
+        self.right_iter.advance_until(target)
+    }
+
+    fn advance_after(&mut self, target: &T) {
+        self.left_iter.advance_after(target);
+        self.right_iter.advance_after(target)
+    }
+}
+
+#[derive(Clone)]
+pub struct Difference<'a, T: Ord> {
+    left_iter: OrdListSetIter<'a, T>,
+    right_iter: OrdListSetIter<'a, T>,
+}
+
+impl<'a, T: Ord> Iterator for Difference<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        difference_next!(self.left_iter, self.right_iter)
+    }
+}
+
+impl<'a, T: 'a + Ord + Clone> PeepAdvanceIter<'a, T> for Difference<'a, T> {
+    fn peep(&mut self) -> Option<&'a T> {
+        difference_peep!(self.left_iter, self.right_iter)
+    }
+
+    fn advance_until(&mut self, target: &T) {
+        self.left_iter.advance_until(target);
+        self.right_iter.advance_until(target)
+    }
+
+    fn advance_after(&mut self, target: &T) {
+        self.left_iter.advance_after(target);
+        self.right_iter.advance_after(target)
+    }
+}
+
+#[derive(Clone)]
+pub struct SymmetricDifference<'a, T: Ord> {
+    left_iter: OrdListSetIter<'a, T>,
+    right_iter: OrdListSetIter<'a, T>,
+}
+
+impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        symmetric_difference_next!(self.left_iter, self.right_iter)
+    }
+}
+
+impl<'a, T: 'a + Ord + Clone> PeepAdvanceIter<'a, T> for SymmetricDifference<'a, T> {
+    fn peep(&mut self) -> Option<&'a T> {
+        symmetric_difference_peep!(self.left_iter, self.right_iter)
+    }
+
+    fn advance_until(&mut self, target: &T) {
+        self.left_iter.advance_until(target);
+        self.right_iter.advance_until(target)
+    }
+
+    fn advance_after(&mut self, target: &T) {
+        self.left_iter.advance_after(target);
+        self.right_iter.advance_after(target)
+    }
+}
+
 impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// Visits the values representing the difference, i.e., all the values in `self` but not in
     /// `other`,without duplicates, in ascending order.
@@ -198,8 +323,11 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// let difference: Vec<&str> = a.difference(&b).cloned().collect();
     /// assert_eq!(difference, ["a", "f",]);
     /// ```
-    pub fn difference(&'a self, other: &'a Self) -> OrdSetOpsIter<'a, T> {
-        self.oso_iter().difference(&other.oso_iter())
+    pub fn difference(&'a self, other: &'a Self) -> Difference<'a, T> {
+        Difference {
+            left_iter: self.iter(),
+            right_iter: other.iter(),
+        }
     }
 
     /// Visits the values representing the intersectio, i.e., all the values in both `self` and
@@ -216,8 +344,11 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// let intersection: Vec<&str> = a.intersection(&b).cloned().collect();
     /// assert_eq!(intersection, ["d", "h",]);
     /// ```
-    pub fn intersection(&'a self, other: &'a Self) -> OrdSetOpsIter<'a, T> {
-        self.oso_iter().intersection(&other.oso_iter())
+    pub fn intersection(&'a self, other: &'a Self) -> Intersection<'a, T> {
+        Intersection {
+            left_iter: self.iter(),
+            right_iter: other.iter(),
+        }
     }
 
     /// Visits the values representing the symmetric difference, i.e., all the values in `self` or
@@ -234,8 +365,11 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// let symmetric_difference: Vec<&str> = a.symmetric_difference(&b).cloned().collect();
     /// assert_eq!(symmetric_difference, ["a", "b", "c", "f", "i"]);
     /// ```
-    pub fn symmetric_difference(&'a self, other: &'a Self) -> OrdSetOpsIter<'a, T> {
-        self.oso_iter().symmetric_difference(&other.oso_iter())
+    pub fn symmetric_difference(&'a self, other: &'a Self) -> SymmetricDifference<'a, T> {
+        SymmetricDifference {
+            left_iter: self.iter(),
+            right_iter: other.iter(),
+        }
     }
 
     /// Visits the values representing the union, i.e., all the values in `self` or `other`,
@@ -252,8 +386,11 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// let union: Vec<&str> = a.union(&b).cloned().collect();
     /// assert_eq!(union, ["a", "b", "c", "d", "f", "h", "i",]);
     /// ```
-    pub fn union(&'a self, other: &'a Self) -> OrdSetOpsIter<'a, T> {
-        self.oso_iter().union(&other.oso_iter())
+    pub fn union(&'a self, other: &'a Self) -> Union<'a, T> {
+        Union {
+            left_iter: self.iter(),
+            right_iter: other.iter(),
+        }
     }
 
     /// Is the output of the given Iterator disjoint from the output of
@@ -342,6 +479,34 @@ impl<T: Ord + Clone> Into<BTreeSet<T>> for OrdListSet<T> {
 impl<'a, T: Ord + Clone> From<OrdSetOpsIter<'a, T>> for OrdListSet<T> {
     fn from(oso_iter: OrdSetOpsIter<T>) -> Self {
         let members: Vec<T> = oso_iter.cloned().collect();
+        Self { members }
+    }
+}
+
+impl<'a, T: Ord + Clone> From<Union<'a, T>> for OrdListSet<T> {
+    fn from(iter: Union<'a, T>) -> Self {
+        let members: Vec<T> = iter.cloned().collect();
+        Self { members }
+    }
+}
+
+impl<'a, T: Ord + Clone> From<Intersection<'a, T>> for OrdListSet<T> {
+    fn from(iter: Intersection<'a, T>) -> Self {
+        let members: Vec<T> = iter.cloned().collect();
+        Self { members }
+    }
+}
+
+impl<'a, T: Ord + Clone> From<Difference<'a, T>> for OrdListSet<T> {
+    fn from(iter: Difference<'a, T>) -> Self {
+        let members: Vec<T> = iter.cloned().collect();
+        Self { members }
+    }
+}
+
+impl<'a, T: Ord + Clone> From<SymmetricDifference<'a, T>> for OrdListSet<T> {
+    fn from(iter: SymmetricDifference<'a, T>) -> Self {
+        let members: Vec<T> = iter.cloned().collect();
         Self { members }
     }
 }
@@ -436,27 +601,22 @@ impl<T: Ord + Clone> BitOr<&OrdListSet<T>> for &OrdListSet<T> {
 }
 
 /// An Iterator over the elements in an ordered list in ascending order.  Implements the
-/// `OrdSetOpsIterator` trait enable it to be used in set expressions (or chained functions)
+/// `PeepAdvanceIter` trait enable it to be used in set expressions (or chained functions)
 /// obviating the need for the creation of temporary sets to hold intermediate results.
 ///
 /// # Examples
 /// ```
 /// use ord_list_set::OrdListSet;
-/// use ord_set_iter_set_ops::{OrdSetOpsIter, SetOsoIter};
 ///
 /// let a = OrdListSet::<u32>::from([1, 2, 3, 7, 8, 9]);
-/// let b = OrdListSet::<u32>::from([2, 3, 4]);
-/// let c = OrdListSet::<u32>::from([3, 5, 6]);
-/// let d = OrdListSet::<u32>::from([2, 7, 9]);
-///
-/// let slow_way = &(&(&a - &b) | &c) ^ &d;
-/// let fast_way: OrdListSet<u32> = (&(&(&a.oso_iter() - &b.oso_iter()) | &c.oso_iter()) ^ &d.oso_iter()).cloned().collect();
-/// let chain_way: OrdListSet<u32> = a.difference(&b)
-///                                     .union(&c.oso_iter())
-///                                     .symmetric_difference(&d.oso_iter())
-///                                     .cloned().collect();
-/// assert_eq!(fast_way, slow_way);
-/// assert_eq!(fast_way, chain_way);
+/// let mut iter = a.iter();
+/// assert_eq!(iter.next(), Some(&1));
+/// assert_eq!(iter.next(), Some(&2));
+/// assert_eq!(iter.next(), Some(&3));
+/// assert_eq!(iter.next(), Some(&7));
+/// assert_eq!(iter.next(), Some(&8));
+/// assert_eq!(iter.next(), Some(&9));
+/// assert_eq!(iter.next(), None);
 /// ```
 #[derive(Default)]
 pub struct OrdListSetIter<'a, T: Ord> {
@@ -480,6 +640,21 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
         let index = self.index;
         self.index += 1;
         self.elements.get(index)
+    }
+
+    fn collect<B: FromIterator<Self::Item>>(self) -> B
+    where
+        Self: Sized,
+    {
+        self.elements[self.index..].iter().collect()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.index < self.elements.len() {
+            (self.index, Some(self.elements.len() - self.index))
+        } else {
+            (self.index, None)
+        }
     }
 }
 
