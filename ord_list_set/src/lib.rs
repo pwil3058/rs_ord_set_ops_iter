@@ -117,7 +117,7 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
             RangeFull => self.members.get(..),
             RangeInclusive(start, end) => self.members.get(*start..=*end),
             RangeTo(end) => self.members.get(..*end),
-            RangeToInclusive(end) => self.members.get(..*end),
+            RangeToInclusive(end) => self.members.get(..=*end),
         } {
             items
         } else {
@@ -175,18 +175,94 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
         }
     }
 
+    /// Returns a reference to a subslice of the set's elements using indices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ord_list_set::OrdListSet;
+    ///
+    /// let set = OrdListSet::<&str>::from(["a", "d", "f", "h", "j", "k", "l"]);
+    ///
+    /// assert!(set.items(set.len()..).is_empty());
+    /// assert_eq!(set.items(..=2), ["a", "d", "f",]);
+    /// assert_eq!(set.items(..2), ["a", "d", ]);
+    /// assert_eq!(set.items(1..5), ["d", "f", "h", "j"]);
+    /// assert_eq!(set.items(1..=5), ["d", "f", "h", "j", "k"]);
+    /// assert_eq!(set.items(..), ["a", "d", "f", "h", "j", "k", "l"]);
+    /// assert_eq!(set.items(2..), ["f", "h", "j", "k", "l"]);
+    /// ```
     pub fn items(&self, range: impl RangeBounds<usize>) -> &[T] {
         self.items_private(&UsizeRangeBounds::for_range_bounds(range))
     }
 
+    /// Returns a reference to a subslice of the set's elements using items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ord_list_set::OrdListSet;
+    ///
+    /// let set = OrdListSet::<&str>::from(["a", "d", "f", "h", "j", "k", "l"]);
+    ///
+    /// assert!(set.item_items("m"..).is_empty());
+    /// assert_eq!(set.item_items(..="f"), ["a", "d", "f",]);
+    /// assert_eq!(set.item_items(..="g"), ["a", "d", "f",]);
+    /// assert_eq!(set.item_items(.."f"), ["a", "d", ]);
+    /// assert_eq!(set.item_items(.."g"), ["a", "d", "f"]);
+    /// assert_eq!(set.item_items("d".."k"), ["d", "f", "h", "j"]);
+    /// assert_eq!(set.item_items("c".."k"), ["d", "f", "h", "j"]);
+    /// assert_eq!(set.item_items("d"..="k"), ["d", "f", "h", "j", "k"]);
+    /// assert_eq!(set.item_items(..), ["a", "d", "f", "h", "j", "k", "l"]);
+    /// assert_eq!(set.item_items("f"..), ["f", "h", "j", "k", "l"]);
+    /// assert_eq!(set.item_items("e"..), ["f", "h", "j", "k", "l"]);
+    /// ```
     pub fn item_items(&self, range: impl RangeBounds<T>) -> &[T] {
         self.items_private(&self.usize_range_bounds(range))
     }
 
+    /// Returns an OrdListSet<T> subset of using indices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ord_list_set::OrdListSet;
+    ///
+    /// let set = OrdListSet::<&str>::from(["a", "d", "f", "h", "j", "k", "l"]);
+    ///
+    /// assert!(set.get_subset(set.len()..).is_empty());
+    /// assert_eq!(set.get_subset(..=2), ["a", "d", "f",].into());
+    /// assert_eq!(set.get_subset(..2), ["a", "d", ].into());
+    /// assert_eq!(set.get_subset(1..5), ["d", "f", "h", "j"].into());
+    /// assert_eq!(set.get_subset(1..=5), ["d", "f", "h", "j", "k"].into());
+    /// assert_eq!(set.get_subset(..), ["a", "d", "f", "h", "j", "k", "l"].into());
+    /// assert_eq!(set.get_subset(2..), ["f", "h", "j", "k", "l"].into());
+    /// ```
     pub fn get_subset(&self, range: impl RangeBounds<usize>) -> OrdListSet<T> {
         Self::from(self.items(range))
     }
 
+    /// Returns an OrdListSet<T> subset of using items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ord_list_set::OrdListSet;
+    ///
+    /// let set = OrdListSet::<&str>::from(["a", "d", "f", "h", "j", "k", "l"]);
+    ///
+    /// assert!(set.get_item_subset("m"..).is_empty());
+    /// assert_eq!(set.get_item_subset(..="f"), ["a", "d", "f",].into());
+    /// assert_eq!(set.get_item_subset(..="g"), ["a", "d", "f",].into());
+    /// assert_eq!(set.get_item_subset(.."f"), ["a", "d", ].into());
+    /// assert_eq!(set.get_item_subset(.."g"), ["a", "d", "f"].into());
+    /// assert_eq!(set.get_item_subset("d".."k"), ["d", "f", "h", "j"].into());
+    /// assert_eq!(set.get_item_subset("c".."k"), ["d", "f", "h", "j"].into());
+    /// assert_eq!(set.get_item_subset("d"..="k"), ["d", "f", "h", "j", "k"].into());
+    /// assert_eq!(set.get_item_subset(..), ["a", "d", "f", "h", "j", "k", "l"].into());
+    /// assert_eq!(set.get_item_subset("f"..), ["f", "h", "j", "k", "l"].into());
+    /// assert_eq!(set.get_item_subset("e"..), ["f", "h", "j", "k", "l"].into());
+    /// ```
     pub fn get_item_subset(&self, range: impl RangeBounds<T>) -> OrdListSet<T> {
         Self::from(self.item_items(range))
     }
