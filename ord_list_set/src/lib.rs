@@ -6,7 +6,7 @@ use std::{
     collections::BTreeSet,
     fmt::Debug,
     iter::FromIterator,
-    ops::{BitAnd, BitOr, BitXor, RangeBounds, Sub},
+    ops::{BitAnd, BitOr, BitXor, Bound, RangeBounds, Sub},
 };
 
 use ord_set_iter_set_ops::{
@@ -14,9 +14,6 @@ use ord_set_iter_set_ops::{
     symmetric_difference_next, symmetric_difference_peep, union_next, union_peep, OrdSetOpsIter,
     PeepAdvanceIter, SetOsoIter,
 };
-
-pub mod error;
-use error::Error;
 
 /// A set of items of type T ordered according to Ord (with no duplicates)
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -68,6 +65,39 @@ impl<'a, T: 'a + Ord + Clone> SetOsoIter<'a, T> for OrdListSet<T> {
     }
 }
 
+enum UsizeRangeBounds {
+    Range(usize, usize),
+    RangeFrom(usize),
+    RangeFull,
+    RangeInclusive(usize, usize),
+    RangeTo(usize),
+    RangeToInclusive(usize),
+}
+
+impl UsizeRangeBounds {
+    fn for_range_bounds(range_bounds: impl RangeBounds<usize>) -> UsizeRangeBounds {
+        use UsizeRangeBounds::*;
+        match range_bounds.start_bound() {
+            Bound::Included(start) => match range_bounds.end_bound() {
+                Bound::Included(end) => RangeInclusive(*start, *end),
+                Bound::Excluded(end) => Range(*start, *end),
+                Bound::Unbounded => RangeFrom(*start),
+            },
+            // shouldn't happen as there's no way to express it
+            Bound::Excluded(start) => match range_bounds.end_bound() {
+                Bound::Included(end) => RangeInclusive(*start, *end),
+                Bound::Excluded(end) => Range(*start, *end),
+                Bound::Unbounded => RangeFrom(*start),
+            },
+            Bound::Unbounded => match range_bounds.end_bound() {
+                Bound::Included(end) => RangeToInclusive(*end),
+                Bound::Excluded(end) => RangeTo(*end),
+                Bound::Unbounded => RangeFull,
+            },
+        }
+    }
+}
+
 // set functions that don't modify the set
 impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     ///Returns true if the set contains an element equal to the value.
@@ -79,91 +109,86 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
         self.members.get(index)
     }
 
-    pub fn items(&self, range: impl RangeBounds<usize>) -> &[T] {
-        use std::ops::Bound;
-        let members = match range.start_bound() {
-            Bound::Included(start) => match range.end_bound() {
-                Bound::Included(end) => self.members.get(*start..=*end),
-                Bound::Excluded(end) => self.members.get(*start..*end),
-                Bound::Unbounded => self.members.get(*start..),
-            },
-            Bound::Excluded(start) => match range.end_bound() {
-                Bound::Included(end) => self.members.get(*start + 1..=*end),
-                Bound::Excluded(end) => self.members.get(*start + 1..*end),
-                Bound::Unbounded => self.members.get(*start..),
-            },
-            Bound::Unbounded => match range.end_bound() {
-                Bound::Included(end) => self.members.get(..=*end),
-                Bound::Excluded(end) => self.members.get(..*end),
-                Bound::Unbounded => self.members.get(..),
-            },
-        };
-        if let Some(members) = members {
-            members
+    fn items_private(&self, usize_range_bounds: &UsizeRangeBounds) -> &[T] {
+        use UsizeRangeBounds::*;
+        if let Some(items) = match usize_range_bounds {
+            Range(start, end) => self.members.get(*start..*end),
+            RangeFrom(start) => self.members.get(*start..),
+            RangeFull => self.members.get(..),
+            RangeInclusive(start, end) => self.members.get(*start..=*end),
+            RangeTo(end) => self.members.get(..*end),
+            RangeToInclusive(end) => self.members.get(..*end),
+        } {
+            items
         } else {
             &[]
         }
     }
 
-    fn index_for(&self, item: &T) -> Result<usize, Error> {
-        match self.members.binary_search(item) {
-            Ok(index) => Ok(index),
-            Err(_) => Err(Error::NotInSet),
+    fn start_bound_for(&self, bound: &Bound<&'a T>) -> Bound<usize> {
+        match bound {
+            Bound::Unbounded => Bound::Unbounded,
+            Bound::Included(target) => match self.members.binary_search(target) {
+                Ok(index) => Bound::Included(index),
+                Err(index) => Bound::Included(index),
+            },
+            Bound::Excluded(target) => match self.members.binary_search(target) {
+                Ok(index) => Bound::Excluded(index),
+                Err(index) => Bound::Included(index),
+            },
         }
     }
 
-    pub fn item_items(&self, range: impl RangeBounds<T>) -> Result<&[T], Error> {
-        use std::ops::Bound;
-        let members = match range.start_bound() {
-            Bound::Included(start) => {
-                let start = self.index_for(start)?;
-                match range.end_bound() {
-                    Bound::Included(end) => {
-                        let end = self.index_for(end)?;
-                        self.members.get(start..=end)
-                    }
-                    Bound::Excluded(end) => {
-                        let end = self.index_for(end)?;
-                        self.members.get(start..end)
-                    }
-                    Bound::Unbounded => self.members.get(start..),
-                }
-            }
-            Bound::Excluded(start) => {
-                let start = self.index_for(start)?;
-                match range.end_bound() {
-                    Bound::Included(end) => {
-                        let end = self.index_for(end)?;
-                        self.members.get(start + 1..=end)
-                    }
-                    Bound::Excluded(end) => {
-                        let end = self.index_for(end)?;
-                        self.members.get(start + 1..end)
-                    }
-                    Bound::Unbounded => self.members.get(start..),
-                }
-            }
-            Bound::Unbounded => match range.end_bound() {
-                Bound::Included(end) => {
-                    let end = self.index_for(end)?;
-                    self.members.get(..=end)
-                }
-                Bound::Excluded(end) => {
-                    let end = self.index_for(end)?;
-                    self.members.get(..end)
-                }
-                Bound::Unbounded => self.members.get(..),
+    fn end_bound_for(&self, bound: &Bound<&'a T>) -> Bound<usize> {
+        match bound {
+            Bound::Unbounded => Bound::Unbounded,
+            Bound::Included(start) => match self.members.binary_search(start) {
+                Ok(index) => Bound::Included(index),
+                Err(index) => Bound::Excluded(index),
             },
-        };
-        Ok(members.unwrap())
+            Bound::Excluded(start) => match self.members.binary_search(start) {
+                Ok(index) => Bound::Excluded(index),
+                Err(index) => Bound::Excluded(index),
+            },
+        }
+    }
+
+    fn usize_range_bounds(&self, range: impl RangeBounds<T>) -> UsizeRangeBounds {
+        use UsizeRangeBounds::*;
+        match self.start_bound_for(&range.start_bound()) {
+            Bound::Unbounded => match self.end_bound_for(&range.end_bound()) {
+                Bound::Unbounded => RangeFull,
+                Bound::Included(end) => RangeToInclusive(end),
+                Bound::Excluded(end) => RangeTo(end),
+            },
+            Bound::Included(start) => match self.end_bound_for(&range.end_bound()) {
+                Bound::Unbounded => RangeFrom(start),
+                Bound::Included(end) => RangeInclusive(start, end),
+                Bound::Excluded(end) => Range(start, end),
+            },
+            // This should never happen
+            Bound::Excluded(start) => match self.end_bound_for(&range.end_bound()) {
+                Bound::Unbounded => RangeFrom(start),
+                Bound::Included(end) => RangeInclusive(start, end),
+                Bound::Excluded(end) => Range(start, end),
+            },
+        }
+    }
+
+    pub fn items(&self, range: impl RangeBounds<usize>) -> &[T] {
+        self.items_private(&UsizeRangeBounds::for_range_bounds(range))
+    }
+
+    pub fn item_items(&self, range: impl RangeBounds<T>) -> &[T] {
+        self.items_private(&self.usize_range_bounds(range))
     }
 
     pub fn get_subset(&self, range: impl RangeBounds<usize>) -> OrdListSet<T> {
         Self::from(self.items(range))
     }
 
-    pub fn get_item_subset(&self, range: impl RangeBounds<T>) -> Result<OrdListSet<T>, Error> {
-        Ok(Self::from(self.item_items(range)?))
+    pub fn get_item_subset(&self, range: impl RangeBounds<T>) -> OrdListSet<T> {
+        Self::from(self.item_items(range))
     }
 
     /// Returns a reference to the first element in the set, if any. This element is always the minimum of all elements in the set.
@@ -650,6 +675,11 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
         self.elements[self.index..].iter().collect()
     }
 
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.index += n;
+        self.next()
+    }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         if self.index < self.elements.len() {
             (self.index, Some(self.elements.len() - self.index))
@@ -659,15 +689,18 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
     }
 }
 
-impl<'a, T: Ord> ExactSizeIterator for OrdListSetIter<'a, T> {
-    fn len(&self) -> usize {
-        self.elements.len() - self.index
-    }
-}
-
 impl<'a, T: Ord> OrdListSetIter<'a, T> {
+    pub fn len(&self) -> usize {
+        // avoid subtraction error
+        if self.is_empty() {
+            0
+        } else {
+            self.elements.len() - self.index
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
-        self.index > self.elements.len()
+        self.index >= self.elements.len()
     }
 }
 
