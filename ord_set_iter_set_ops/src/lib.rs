@@ -68,28 +68,50 @@ where
     }
 }
 
-pub enum OrdSetOpsIter<'a, T>
-where
-    T: Ord + Clone,
-{
-    Difference(Box<DifferenceIterator<'a, T>>),
-    Intersection(Box<IntersectionIterator<'a, T>>),
-    SymmetricDifference(Box<SymmetricDifferenceIterator<'a, T>>),
-    Union(Box<UnionIterator<'a, T>>),
-    Plain(Box<dyn PeepAdvanceIter<'a, T, Item = &'a T> + 'a>),
+// pub enum OrdSetOpsIter<'a, T>
+// where
+//     T: Ord + Clone,
+// {
+//     Difference(Box<DifferenceIterator<'a, T>>),
+//     Intersection(Box<IntersectionIterator<'a, T>>),
+//     SymmetricDifference(Box<SymmetricDifferenceIterator<'a, T>>),
+//     Union(Box<UnionIterator<'a, T>>),
+//     Plain(Box<dyn PeepAdvanceIter<'a, T, Item = &'a T> + 'a>),
+// }
+
+#[derive(Clone)]
+pub struct OrdSetOpsIter<'a, T: Ord + Clone> {
+    iter: Box<dyn PeepAdvanceIter<'a, T, Item = &'a T> + 'a>,
 }
 
-impl<'a, T: Ord + Clone> Clone for OrdSetOpsIter<'a, T> {
-    #[allow(unreachable_code)]
-    fn clone(&self) -> Self {
-        use OrdSetOpsIter::*;
-        match self {
-            Difference(iter) => Difference(iter.clone()),
-            Intersection(iter) => Intersection(iter.clone()),
-            SymmetricDifference(iter) => SymmetricDifference(iter.clone()),
-            Union(iter) => Union(iter.clone()),
-            Plain(iter) => Plain(iter.clone()),
+impl<'a, T: Ord + Clone> OrdSetOpsIter<'a, T> {
+    pub fn new(iter: impl PeepAdvanceIter<'a, T, Item = &'a T> + 'a) -> Self {
+        Self {
+            iter: Box::new(iter),
         }
+    }
+}
+
+impl<'a, T> Iterator for OrdSetOpsIter<'a, T>
+where
+    T: 'a + Ord + Clone,
+{
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+
+    fn collect<B: FromIterator<Self::Item>>(self) -> B {
+        self.iter.collect()
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.iter.nth(n)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
     }
 }
 
@@ -98,99 +120,20 @@ where
     T: 'a + Ord + Clone,
 {
     fn peep(&mut self) -> Option<&'a T> {
-        use OrdSetOpsIter::*;
-        match self {
-            Difference(iter) => iter.peep(),
-            // Difference(ref mut self_iter, ref mut other_iter) => {
-            //     while let Some(l_item) = self_iter.peep() {
-            //         if let Some(r_item) = other_iter.peep() {
-            //             match l_item.cmp(r_item) {
-            //                 Ordering::Less => {
-            //                     return Some(l_item);
-            //                 }
-            //                 Ordering::Greater => {
-            //                     other_iter.advance_until(l_item);
-            //                 }
-            //                 Ordering::Equal => {
-            //                     self_iter.next();
-            //                     other_iter.next();
-            //                 }
-            //             }
-            //         } else {
-            //             return Some(l_item);
-            //         }
-            //     }
-            //     None
-            // }
-            Intersection(iter) => iter.peep(),
-            // Intersection(ref mut self_iter, ref mut other_iter) => {
-            //     while let Some(l_item) = self_iter.peep() {
-            //         if let Some(r_item) = other_iter.peep() {
-            //             match l_item.cmp(r_item) {
-            //                 Ordering::Less => {
-            //                     self_iter.advance_until(r_item);
-            //                 }
-            //                 Ordering::Greater => {
-            //                     other_iter.advance_until(l_item);
-            //                 }
-            //                 Ordering::Equal => return Some(l_item),
-            //             }
-            //         } else {
-            //             return None;
-            //         }
-            //     }
-            //     None
-            // }
-            SymmetricDifference(iter) => iter.peep(),
-            // SymmetricDifference(ref mut self_iter, ref mut other_iter) => {
-            //     while let Some(l_item) = self_iter.peep() {
-            //         if let Some(r_item) = other_iter.peep() {
-            //             match l_item.cmp(r_item) {
-            //                 Ordering::Less => {
-            //                     return Some(l_item);
-            //                 }
-            //                 Ordering::Greater => {
-            //                     return Some(r_item);
-            //                 }
-            //                 Ordering::Equal => {
-            //                     self_iter.next();
-            //                     other_iter.next();
-            //                 }
-            //             }
-            //         } else {
-            //             return Some(l_item);
-            //         }
-            //     }
-            //     other_iter.peep()
-            // }
-            Union(iter) => iter.peep(),
-            // Union(ref mut self_iter, ref mut other_iter) => {
-            //     if let Some(l_item) = self_iter.peep() {
-            //         if let Some(r_item) = other_iter.peep() {
-            //             match l_item.cmp(r_item) {
-            //                 Ordering::Less | Ordering::Equal => Some(l_item),
-            //                 Ordering::Greater => Some(r_item),
-            //             }
-            //         } else {
-            //             Some(l_item)
-            //         }
-            //     } else {
-            //         other_iter.peep()
-            //     }
-            // }
-            Plain(ref mut iter) => iter.peep(),
-        }
+        self.iter.peep()
+    }
+
+    fn advance_after(&mut self, target: &T) {
+        self.iter.advance_after(target)
     }
 
     fn advance_until(&mut self, target: &T) {
-        match self {
-            Self::Difference(iter) => iter.advance_until(target),
-            Self::Intersection(iter) => iter.advance_until(target),
-            Self::SymmetricDifference(iter) => iter.advance_until(target),
-            Self::Union(iter) => iter.advance_until(target),
-            Self::Plain(ref mut iter) => iter.advance_until(target),
-        }
+        self.iter.advance_until(target)
     }
+}
+
+pub trait SetOperations<'a, T: 'a + Ord + Clone>: PeepAdvanceIter<'a, T> + Clone {
+    fn difference(&self, other: &Self) -> dyn PeepAdvanceIter<'a, T>;
 }
 
 impl<'a, T> OrdSetOpsIter<'a, T>
@@ -198,37 +141,40 @@ where
     T: 'a + Ord + Clone,
 {
     pub fn difference(&self, other: &Self) -> OrdSetOpsIter<'a, T> {
-        Self::Difference(Box::new(DifferenceIterator {
+        let iter = DifferenceIterator {
             left_iter: self.clone(),
             right_iter: other.clone(),
-        }))
+        };
+        Self::new(iter)
     }
 
     pub fn intersection(&self, other: &Self) -> OrdSetOpsIter<'a, T> {
-        Self::Intersection(Box::new(IntersectionIterator {
+        let iter = IntersectionIterator {
             left_iter: self.clone(),
             right_iter: other.clone(),
-        }))
+        };
+        Self::new(iter)
     }
 
     pub fn symmetric_difference(&self, other: &Self) -> OrdSetOpsIter<'a, T> {
-        Self::SymmetricDifference(Box::new(SymmetricDifferenceIterator {
+        let iter = SymmetricDifferenceIterator {
             left_iter: self.clone(),
             right_iter: other.clone(),
-        }))
+        };
+        Self::new(iter)
     }
 
     pub fn union(&self, other: &Self) -> OrdSetOpsIter<'a, T> {
-        Self::Union(Box::new(UnionIterator {
+        let iter = UnionIterator {
             left_iter: self.clone(),
             right_iter: other.clone(),
-        }))
+        };
+        Self::new(iter)
     }
 }
 
-// TODO: move these back into PeekAdvanceIterator
-impl<'a, T: 'a + Ord + Clone> OrdSetOpsIter<'a, T> {
-    pub fn is_disjoint(&self, other: &Self) -> bool {
+pub trait SetRelationships<'a, T: 'a + Ord + Clone>: PeepAdvanceIter<'a, T> + Clone {
+    fn is_disjoint(&self, other: &Self) -> bool {
         let mut self_iter = self.clone();
         let mut other_iter = other.clone();
         loop {
@@ -254,7 +200,7 @@ impl<'a, T: 'a + Ord + Clone> OrdSetOpsIter<'a, T> {
         }
     }
 
-    pub fn is_proper_subset(&self, other: &Self) -> bool {
+    fn is_proper_subset(&self, other: &Self) -> bool {
         let mut self_iter = self.clone();
         let mut other_iter = other.clone();
         let mut result = false;
@@ -280,7 +226,7 @@ impl<'a, T: 'a + Ord + Clone> OrdSetOpsIter<'a, T> {
         result || other_iter.peep().is_some()
     }
 
-    pub fn is_subset(&self, other: &Self) -> bool {
+    fn is_subset(&self, other: &Self) -> bool {
         let mut self_iter = self.clone();
         let mut other_iter = other.clone();
         while let Some(my_item) = self_iter.peep() {
@@ -304,7 +250,7 @@ impl<'a, T: 'a + Ord + Clone> OrdSetOpsIter<'a, T> {
         true
     }
 
-    pub fn is_proper_superset(&self, other: &Self) -> bool {
+    fn is_proper_superset(&self, other: &Self) -> bool {
         let mut self_iter = self.clone();
         let mut other_iter = other.clone();
         let mut result = false;
@@ -330,7 +276,7 @@ impl<'a, T: 'a + Ord + Clone> OrdSetOpsIter<'a, T> {
         result && other_iter.peep().is_none()
     }
 
-    pub fn is_superset(&self, other: &Self) -> bool {
+    fn is_superset(&self, other: &Self) -> bool {
         let mut self_iter = self.clone();
         let mut other_iter = other.clone();
         while let Some(my_item) = self_iter.peep() {
@@ -355,117 +301,7 @@ impl<'a, T: 'a + Ord + Clone> OrdSetOpsIter<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for OrdSetOpsIter<'a, T>
-where
-    T: 'a + Ord + Clone,
-{
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Difference(iter) => iter.next(),
-            // Self::Difference(ref mut self_iter, ref mut other_iter) => {
-            //     while let Some(l_item) = self_iter.peep() {
-            //         if let Some(r_item) = other_iter.peep() {
-            //             match l_item.cmp(r_item) {
-            //                 Ordering::Less => {
-            //                     return self_iter.next();
-            //                 }
-            //                 Ordering::Greater => {
-            //                     other_iter.advance_until(l_item);
-            //                 }
-            //                 Ordering::Equal => {
-            //                     self_iter.next();
-            //                     other_iter.next();
-            //                 }
-            //             }
-            //         } else {
-            //             return self_iter.next();
-            //         }
-            //     }
-            //     None
-            // }
-            Self::Intersection(iter) => iter.next(),
-            // Self::Intersection(ref mut self_iter, ref mut other_iter) => {
-            //     while let Some(l_item) = self_iter.peep() {
-            //         if let Some(r_item) = other_iter.peep() {
-            //             match l_item.cmp(r_item) {
-            //                 Ordering::Less => {
-            //                     self_iter.advance_until(r_item);
-            //                 }
-            //                 Ordering::Greater => {
-            //                     other_iter.advance_until(l_item);
-            //                 }
-            //                 Ordering::Equal => {
-            //                     other_iter.next();
-            //                     return self_iter.next();
-            //                 }
-            //             }
-            //         } else {
-            //             return None;
-            //         }
-            //     }
-            //     None
-            // }
-            Self::SymmetricDifference(iter) => iter.next(),
-            // Self::SymmetricDifference(ref mut self_iter, ref mut other_iter) => {
-            //     while let Some(l_item) = self_iter.peep() {
-            //         if let Some(r_item) = other_iter.peep() {
-            //             match l_item.cmp(r_item) {
-            //                 Ordering::Less => {
-            //                     return self_iter.next();
-            //                 }
-            //                 Ordering::Greater => {
-            //                     return other_iter.next();
-            //                 }
-            //                 Ordering::Equal => {
-            //                     self_iter.next();
-            //                     other_iter.next();
-            //                 }
-            //             }
-            //         } else {
-            //             return self_iter.next();
-            //         }
-            //     }
-            //     other_iter.next()
-            // }
-            Self::Union(iter) => iter.next(),
-            // Self::Union(iter) => {
-            //     union_next!(left_iter, right_iter)
-            // if let Some(l_item) = self_iter.peep() {
-            //     if let Some(r_item) = other_iter.peep() {
-            //         match l_item.cmp(r_item) {
-            //             Ordering::Less => self_iter.next(),
-            //             Ordering::Greater => other_iter.next(),
-            //             Ordering::Equal => {
-            //                 other_iter.next();
-            //                 self_iter.next()
-            //             }
-            //         }
-            //     } else {
-            //         self_iter.next()
-            //     }
-            // } else {
-            //     other_iter.next()
-            // }
-            // }
-            Self::Plain(ref mut iter) => iter.next(),
-        }
-    }
-
-    fn collect<B: FromIterator<Self::Item>>(mut self) -> B
-    where
-        Self: Sized,
-    {
-        match self {
-            Self::Difference(iter) => iter.collect(),
-            Self::Intersection(iter) => iter.collect(),
-            Self::SymmetricDifference(iter) => iter.collect(),
-            Self::Union(iter) => iter.collect(),
-            Self::Plain(ref mut iter) => iter.collect(),
-        }
-    }
-}
+impl<'a, T: 'a + Ord + Clone> SetRelationships<'a, T> for OrdSetOpsIter<'a, T> {}
 
 impl<'a, T> BitAnd for &OrdSetOpsIter<'a, T>
 where
@@ -512,6 +348,13 @@ where
     #[inline]
     fn sub(self, other: Self) -> Self::Output {
         OrdSetOpsIter::difference(self, other)
+    }
+}
+
+#[allow(clippy::from_over_into)] // NB: we can't do from on an imported struct
+impl<'a, T: Ord + Clone> Into<BTreeSet<T>> for OrdSetOpsIter<'a, T> {
+    fn into(self) -> BTreeSet<T> {
+        BTreeSet::<T>::from_iter(self.cloned())
     }
 }
 
@@ -563,7 +406,7 @@ where
 
 impl<'a, T: 'a + Ord + Clone> SetOsoIter<'a, T> for BTreeSet<T> {
     fn oso_iter(&'a self) -> OrdSetOpsIter<'a, T> {
-        OrdSetOpsIter::Plain(Box::new(self.iter().peekable()))
+        OrdSetOpsIter::new(self.iter().peekable())
     }
 }
 
@@ -580,7 +423,7 @@ where
     K: 'a + Ord + Clone,
 {
     fn oso_keys(&'a self) -> OrdSetOpsIter<'a, K> {
-        OrdSetOpsIter::Plain(Box::new(self.keys().peekable()))
+        OrdSetOpsIter::new(self.keys().peekable())
     }
 }
 
