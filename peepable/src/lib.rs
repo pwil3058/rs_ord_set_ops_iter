@@ -55,7 +55,7 @@ pub trait PeepAdvanceIter<'a, T: 'a + Ord>: Iterator<Item = &'a T> + 'a + Clone 
 }
 
 //#[clonable]
-pub trait OrdSetIterSetOpsIterator<'a, T: 'a + Ord + Clone + std::default::Default>:
+pub trait OrdSetIterSetOpsIterator<'a, T: 'a + Ord + Clone>:
     PeepAdvanceIter<'a, T> + Sized + Clone
 {
     #[allow(clippy::wrong_self_convention)]
@@ -117,10 +117,7 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for Peekable<btree_set::Iter<'a, T>
     }
 }
 
-impl<'a, T: 'a + Ord + Clone + Default> OrdSetIterSetOpsIterator<'a, T>
-    for Peekable<btree_set::Iter<'a, T>>
-{
-}
+impl<'a, T: 'a + Ord + Clone> OrdSetIterSetOpsIterator<'a, T> for Peekable<btree_set::Iter<'a, T>> {}
 
 impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for Peekable<btree_set::Intersection<'a, T>> {
     fn peep(&mut self) -> Option<&'a T> {
@@ -128,7 +125,7 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for Peekable<btree_set::Intersectio
     }
 }
 
-impl<'a, T: 'a + Ord + Clone + Default> OrdSetIterSetOpsIterator<'a, T>
+impl<'a, T: 'a + Ord + Clone> OrdSetIterSetOpsIterator<'a, T>
     for Peekable<btree_set::Intersection<'a, T>>
 {
 }
@@ -139,7 +136,7 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for Peekable<btree_set::Difference<
     }
 }
 
-impl<'a, T: 'a + Ord + Clone + Default> OrdSetIterSetOpsIterator<'a, T>
+impl<'a, T: 'a + Ord + Clone> OrdSetIterSetOpsIterator<'a, T>
     for Peekable<btree_set::Difference<'a, T>>
 {
 }
@@ -150,7 +147,7 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for Peekable<btree_set::SymmetricDi
     }
 }
 
-impl<'a, T: 'a + Ord + Clone + Default> OrdSetIterSetOpsIterator<'a, T>
+impl<'a, T: 'a + Ord + Clone> OrdSetIterSetOpsIterator<'a, T>
     for Peekable<btree_set::SymmetricDifference<'a, T>>
 {
 }
@@ -161,7 +158,7 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for Peekable<btree_set::Union<'a, T
     }
 }
 
-impl<'a, T: 'a + Ord + Clone + Default> OrdSetIterSetOpsIterator<'a, T>
+impl<'a, T: 'a + Ord + Clone> OrdSetIterSetOpsIterator<'a, T>
     for Peekable<btree_set::Union<'a, T>>
 {
 }
@@ -172,7 +169,7 @@ impl<'a, T: 'a + Ord, V> PeepAdvanceIter<'a, T> for Peekable<btree_map::Keys<'a,
     }
 }
 
-impl<'a, T: 'a + Ord + Clone + Default, V> OrdSetIterSetOpsIterator<'a, T>
+impl<'a, T: 'a + Ord + Clone, V> OrdSetIterSetOpsIterator<'a, T>
     for Peekable<btree_map::Keys<'a, T, V>>
 {
 }
