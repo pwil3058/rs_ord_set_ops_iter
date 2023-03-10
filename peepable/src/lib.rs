@@ -54,7 +54,6 @@ pub trait PeepAdvanceIter<'a, T: 'a + Ord>: Iterator<Item = &'a T> + 'a + Clone 
     }
 }
 
-//#[clonable]
 pub trait OrdSetIterSetOpsIterator<'a, T: 'a + Ord + Clone>:
     PeepAdvanceIter<'a, T> + Sized + Clone
 {
@@ -85,29 +84,26 @@ pub trait OrdSetIterSetOpsIterator<'a, T: 'a + Ord + Clone>:
     fn difference(
         self,
         other: impl PeepAdvanceIter<'a, T, Item = &'a T>,
-    ) -> Box<dyn PeepAdvanceIter<'a, T, Item = &'a T> + 'a> {
-        Box::new(DifferenceIterator::new(self, other))
+    ) -> DifferenceIterator<'a, T> {
+        DifferenceIterator::new(self, other)
     }
 
     fn intersection(
         self,
         other: impl PeepAdvanceIter<'a, T, Item = &'a T>,
-    ) -> Box<dyn PeepAdvanceIter<'a, T, Item = &'a T> + 'a> {
-        Box::new(IntersectionIterator::new(self, other))
+    ) -> IntersectionIterator<'a, T> {
+        IntersectionIterator::new(self, other)
     }
 
     fn symmetric_difference(
         self,
         other: impl PeepAdvanceIter<'a, T, Item = &'a T>,
-    ) -> Box<dyn PeepAdvanceIter<'a, T, Item = &'a T> + 'a> {
-        Box::new(SymmetricDifferenceIterator::new(self, other))
+    ) -> SymmetricDifferenceIterator<'a, T> {
+        SymmetricDifferenceIterator::new(self, other)
     }
 
-    fn union(
-        self,
-        other: impl PeepAdvanceIter<'a, T, Item = &'a T>,
-    ) -> Box<dyn PeepAdvanceIter<'a, T, Item = &'a T> + 'a> {
-        Box::new(UnionIterator::new(self, other))
+    fn union(self, other: impl PeepAdvanceIter<'a, T, Item = &'a T>) -> UnionIterator<'a, T> {
+        UnionIterator::new(self, other)
     }
 }
 
@@ -177,7 +173,7 @@ impl<'a, T: 'a + Ord + Clone, V> OrdSetIterSetOpsIterator<'a, T>
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::collections::BTreeSet;
+    use std::collections::{BTreeMap, BTreeSet};
 
     #[test]
     fn difference() {
@@ -235,19 +231,50 @@ mod test {
         );
     }
 
-    // #[test]
-    // fn expression() {
-    //     let set1 = BTreeSet::from(["a", "b", "c", "d", "e", "f"]);
-    //     let set2 = BTreeSet::from(["b", "c", "e", "g"]);
-    //     let set3 = BTreeSet::from(["e", "f", "g"]);
-    //
-    //     let op_result = &(&set1 | &set3) - &set2;
-    //     let oso_result = BTreeSet::from_iter(
-    //         set1.iter()
-    //             .peekable()
-    //             .union(set3.iter().peekable())
-    //             .difference(set2.iter().peekable()),
-    //     );
-    //     assert_eq!(op_result, oso_result);
-    // }
+    #[test]
+    fn expression() {
+        let set1 = BTreeSet::from(["a", "b", "c", "d", "e", "f"]);
+        let set2 = BTreeSet::from(["b", "c", "e", "g"]);
+        let set3 = BTreeSet::from(["e", "f", "g"]);
+        let set4 = BTreeSet::from(["b", "d", "h", "i", "j"]);
+
+        assert_eq!(
+            &(&(&set1 | &set3) - &(&set2 & &set4)) ^ &set3,
+            BTreeSet::from_iter(
+                set1.iter()
+                    .peekable()
+                    .union(set3.iter().peekable())
+                    .difference(
+                        set2.iter()
+                            .peekable()
+                            .intersection(set4.iter().peekable())
+                            .symmetric_difference(set3.iter().peekable()),
+                    )
+                    .cloned(),
+            )
+        );
+    }
+
+    #[test]
+    fn map() {
+        let set1 = BTreeSet::from(["a", "b", "c", "d", "e", "f"]);
+        let set2 = BTreeSet::from(["b", "d", "h", "i", "j"]);
+        let map = BTreeMap::from([("b", 1), ("c", 3), ("g", 5), ("i", 6)]);
+        assert_eq!(
+            map.keys()
+                .peekable()
+                .intersection(set1.iter().peekable())
+                .cloned()
+                .collect::<Vec<_>>(),
+            vec!["b", "c"]
+        );
+        assert_eq!(
+            set2.iter()
+                .peekable()
+                .difference(map.keys().peekable())
+                .cloned()
+                .collect::<Vec<_>>(),
+            vec!["d", "h", "j"]
+        );
+    }
 }
