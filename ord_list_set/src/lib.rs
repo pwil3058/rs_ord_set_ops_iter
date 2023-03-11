@@ -11,8 +11,8 @@ use std::{
 
 use ord_set_iter_set_ops::{
     difference_next, difference_peep, intersection_next, intersection_peep,
-    symmetric_difference_next, symmetric_difference_peep, union_next, union_peep, OrdSetOpsIter,
-    PeepAdvanceIter, SetOsoIter, SetRelationships,
+    symmetric_difference_next, symmetric_difference_peep, union_next, union_peep,
+    OrdSetIterSetOpsIterator, PeepAdvanceIter,
 };
 
 /// A set of items of type T ordered according to Ord (with no duplicates)
@@ -55,15 +55,15 @@ impl<T: Ord> OrdListSet<T> {
     }
 }
 
-impl<'a, T: 'a + Ord + Clone> SetOsoIter<'a, T> for OrdListSet<T> {
-    /// Return a set operations iterator over the members in the `OrdListSet` in ascending order.
-    fn oso_iter(&'a self) -> OrdSetOpsIter<'a, T> {
-        OrdSetOpsIter::new(OrdListSetIter {
-            elements: &self.members,
-            index: 0,
-        })
-    }
-}
+// impl<'a, T: 'a + Ord + Clone> SetOsoIter<'a, T> for OrdListSet<T> {
+//     /// Return a set operations iterator over the members in the `OrdListSet` in ascending order.
+//     fn oso_iter(&'a self) -> OrdSetOpsIter<'a, T> {
+//         OrdSetOpsIter::new(OrdListSetIter {
+//             elements: &self.members,
+//             index: 0,
+//         })
+//     }
+// }
 
 enum UsizeRangeBounds {
     Range(usize, usize),
@@ -319,7 +319,7 @@ impl<'a, T: 'a + Ord + Clone> PeepAdvanceIter<'a, T> for Union<'a, T> {
     }
 }
 
-impl<'a, T: 'a + Ord + Clone> SetRelationships<'a, T> for Union<'a, T> {}
+impl<'a, T: 'a + Ord + Clone> OrdSetIterSetOpsIterator<'a, T> for Union<'a, T> {}
 
 #[derive(Clone)]
 pub struct Intersection<'a, T: Ord> {
@@ -351,7 +351,7 @@ impl<'a, T: 'a + Ord + Clone> PeepAdvanceIter<'a, T> for Intersection<'a, T> {
     }
 }
 
-impl<'a, T: 'a + Ord + Clone> SetRelationships<'a, T> for Intersection<'a, T> {}
+impl<'a, T: 'a + Ord + Clone> OrdSetIterSetOpsIterator<'a, T> for Intersection<'a, T> {}
 
 #[derive(Clone)]
 pub struct Difference<'a, T: Ord> {
@@ -383,7 +383,7 @@ impl<'a, T: 'a + Ord + Clone> PeepAdvanceIter<'a, T> for Difference<'a, T> {
     }
 }
 
-impl<'a, T: 'a + Ord + Clone> SetRelationships<'a, T> for Difference<'a, T> {}
+impl<'a, T: 'a + Ord + Clone> OrdSetIterSetOpsIterator<'a, T> for Difference<'a, T> {}
 
 #[derive(Clone)]
 pub struct SymmetricDifference<'a, T: Ord> {
@@ -415,7 +415,7 @@ impl<'a, T: 'a + Ord + Clone> PeepAdvanceIter<'a, T> for SymmetricDifference<'a,
     }
 }
 
-impl<'a, T: 'a + Ord + Clone> SetRelationships<'a, T> for SymmetricDifference<'a, T> {}
+impl<'a, T: 'a + Ord + Clone> OrdSetIterSetOpsIterator<'a, T> for SymmetricDifference<'a, T> {}
 
 impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// Visits the values representing the difference, i.e., all the values in `self` but not in
@@ -505,31 +505,31 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// Is the output of the given Iterator disjoint from the output of
     /// this iterator?
     pub fn is_disjoint(&self, other: &'a Self) -> bool {
-        self.iter().is_disjoint(&other.iter())
+        self.iter().is_disjoint(other.iter())
     }
 
     /// Is the output of the given Iterator a proper subset of the output of
     /// this iterator?
     pub fn is_proper_subset(&self, other: &'a Self) -> bool {
-        self.iter().is_proper_subset(&other.iter())
+        self.iter().is_proper_subset(other.iter())
     }
 
     /// Is the output of the given Iterator a proper superset of the output of
     /// this iterator?
     pub fn is_proper_superset(&self, other: &'a Self) -> bool {
-        self.iter().is_proper_superset(&other.iter())
+        self.iter().is_proper_superset(other.iter())
     }
 
     /// Is the output of the given Iterator a subset of the output of
     /// this iterator?
     pub fn is_subset(&self, other: &'a Self) -> bool {
-        self.iter().is_subset(&other.iter())
+        self.iter().is_subset(other.iter())
     }
 
     /// Is the output of the given Iterator a superset of the output of
     /// this iterator?
     pub fn is_superset(&self, other: &'a Self) -> bool {
-        self.iter().is_superset(&other.iter())
+        self.iter().is_superset(other.iter())
     }
 }
 
@@ -582,12 +582,13 @@ impl<T: Ord + Clone> Into<BTreeSet<T>> for OrdListSet<T> {
     }
 }
 
-impl<'a, T: Ord + Clone> From<OrdSetOpsIter<'a, T>> for OrdListSet<T> {
-    fn from(oso_iter: OrdSetOpsIter<T>) -> Self {
-        let members: Vec<T> = oso_iter.cloned().collect();
-        Self { members }
-    }
-}
+// TODO: implement from for all known iterators
+// impl<'a, T: Ord + Clone> From<dyn PeepAdvanceIter<'a, T>> for OrdListSet<T> {
+//     fn from(oso_iter: dyn PeepAdvanceIter<T>) -> Self {
+//         let members: Vec<T> = oso_iter.cloned().collect();
+//         Self { members }
+//     }
+// }
 
 impl<'a, T: Ord + Clone> From<Union<'a, T>> for OrdListSet<T> {
     fn from(iter: Union<'a, T>) -> Self {
@@ -713,7 +714,7 @@ impl<T: Ord + Clone> BitOr<&OrdListSet<T>> for &OrdListSet<T> {
 /// # Examples
 /// ```
 /// use ord_list_set::OrdListSet;
-/// use ord_set_iter_set_ops::SetRelationships;
+/// use ord_set_iter_set_ops::OrdSetIterSetOpsIterator;
 ///
 /// let a = OrdListSet::<u32>::from([1, 2, 3, 7, 8, 9]);
 /// let mut iter = a.iter();
@@ -725,7 +726,7 @@ impl<T: Ord + Clone> BitOr<&OrdListSet<T>> for &OrdListSet<T> {
 /// assert_eq!(iter.next(), Some(&9));
 /// assert_eq!(iter.next(), None);
 /// let b = OrdListSet::<u32>::from([ 7, 8, 9, 10, 11]);
-/// assert!(!a.iter().is_disjoint(&b.iter()));
+/// assert!(!a.iter().is_disjoint(b.iter()));
 /// ```
 #[derive(Default)]
 pub struct OrdListSetIter<'a, T: Ord> {
@@ -771,8 +772,6 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
         }
     }
 }
-
-impl<'a, T: 'a + Ord + Clone> SetRelationships<'a, T> for OrdListSetIter<'a, T> {}
 
 impl<'a, T: Ord> OrdListSetIter<'a, T> {
     pub fn len(&self) -> usize {
@@ -823,6 +822,8 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for OrdListSetIter<'a, T> {
         }
     }
 }
+
+impl<'a, T: 'a + Ord + Clone> OrdSetIterSetOpsIterator<'a, T> for OrdListSetIter<'a, T> {}
 
 #[cfg(test)]
 mod tests {

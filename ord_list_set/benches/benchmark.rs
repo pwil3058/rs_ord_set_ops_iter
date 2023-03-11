@@ -1,6 +1,7 @@
 // Copyright 2023 Peter Williams <pwil3058@gmail.com> <pwil3058@bigpond.net.au>
 use criterion::{criterion_group, criterion_main, Criterion};
 use ord_list_set::*;
+use ord_set_iter_set_ops::SetOsoIter;
 use std::collections::btree_set::*;
 use std::iter::FromIterator;
 
@@ -49,20 +50,29 @@ pub fn union_benchmark(c: &mut Criterion) {
     let ord_list_set2 = OrdListSet::from(data2);
 
     let mut group = c.benchmark_group("Union: OrdListSet vs BTreeSet");
-    group.bench_function("BTreeSet: .union().collect()", |b| {
+    group.bench_function("BTreeSet: .union().cloned().collect()", |b| {
         b.iter(|| {
-            //let _result: BTreeSet<&str> = btree_set1.union(&btree_set2).cloned().collect();
-            let _result = BTreeSet::<&str>::from_iter(btree_set1.union(&btree_set2).cloned());
+            let _result: BTreeSet<&str> = btree_set1.union(&btree_set2).cloned().collect();
         })
     });
+    // group.bench_function("BTreeSet: .oso_union().into()", |b| {
+    //     b.iter(|| {
+    //         let _result: BTreeSet<&str> = btree_set1.oso_union(&btree_set2).into();
+    //     })
+    // });
     group.bench_function("BTreeSet: '|' operator'", |b| {
         b.iter(|| {
             let _result: BTreeSet<&str> = &btree_set1 | &btree_set2;
         })
     });
-    group.bench_function("OrdListSet: .union().collect()", |b| {
+    group.bench_function("OrdListSet: .union().into()", |b| {
         b.iter(|| {
             let _result: OrdListSet<&str> = ord_list_set1.union(&ord_list_set2).into();
+        })
+    });
+    group.bench_function("OrdListSet: .union().cloned().collect()", |b| {
+        b.iter(|| {
+            let _result: OrdListSet<&str> = ord_list_set1.union(&ord_list_set2).cloned().collect();
         })
     });
     group.bench_function("OrdListSet: '|' operator'", |b| {
@@ -70,6 +80,11 @@ pub fn union_benchmark(c: &mut Criterion) {
             let _result: OrdListSet<&str> = &ord_list_set1 | &ord_list_set2;
         })
     });
+    // group.bench_function("OrdListSet: .oso_union().into()", |b| {
+    //     b.iter(|| {
+    //         let _result: OrdListSet<&str> = ord_list_set1.oso_union(&ord_list_set2).into();
+    //     })
+    // });
     group.finish();
 }
 

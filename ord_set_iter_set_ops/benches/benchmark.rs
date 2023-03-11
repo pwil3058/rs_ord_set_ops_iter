@@ -1,29 +1,45 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use ord_set_iter_set_ops::*;
 use std::collections::BTreeSet;
 
-pub fn union_benchmark(c: &mut Criterion) {
-    let set1 = BTreeSet::<&str>::from(["a", "b", "c", "g", "e", "f"]);
-    let set2 = BTreeSet::<&str>::from(["c", "f", "i", "l"]);
+pub fn peekable_benchmark(c: &mut Criterion) {
+    let set = BTreeSet::<&str>::from(["a", "b", "c", "g", "e", "f"]);
 
-    let mut group = c.benchmark_group("Union 8/2");
-    group.bench_function("native using union()", |b| {
+    let mut group = c.benchmark_group("Peekable overhead");
+    group.bench_function("BTree.iter().collect()", |b| {
         b.iter(|| {
-            let _result: BTreeSet<&str>::from_iter(set1.union(&set2).cloned());
+            let _result = set.iter().collect::<Vec<_>>();
         })
     });
-    group.bench_function("native using '|' operator", |b| {
+    group.bench_function("BTree.iter().seekable().collect()", |b| {
         b.iter(|| {
-            let _result = &set1 | &set2;
-        })
-    });
-    group.bench_function("oso", |b| {
-        b.iter(|| {
-            let _result = BTreeSet::<&str>::from_iter(set1.oso_union(&set2).cloned());
+            let _result = set.iter().peekable().collect::<Vec<_>>();
         })
     });
     group.finish();
 }
+// pub fn union_benchmark(c: &mut Criterion) {
+// use ord_set_iter_set_ops::*;
+//     let set1 = BTreeSet::<&str>::from(["a", "b", "c", "g", "e", "f"]);
+//     let set2 = BTreeSet::<&str>::from(["c", "f", "i", "l"]);
+//
+//     let mut group = c.benchmark_group("Union 8/2");
+//     group.bench_function("native using union()", |b| {
+//         b.iter(|| {
+//             let _result: BTreeSet<&str>::from_iter(set1.union(&set2).cloned());
+//         })
+//     });
+//     group.bench_function("native using '|' operator", |b| {
+//         b.iter(|| {
+//             let _result = &set1 | &set2;
+//         })
+//     });
+//     group.bench_function("oso", |b| {
+//         b.iter(|| {
+//             let _result = BTreeSet::<&str>::from_iter(set1.oso_union(&set2).cloned());
+//         })
+//     });
+//     group.finish();
+// }
 //
 // pub fn intersection_benchmark(c: &mut Criterion) {
 //     let set1: BTreeSet<&str> = ["a", "b", "c", "g", "e", "f"].iter().cloned().collect();
@@ -125,7 +141,8 @@ pub fn union_benchmark(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    union_benchmark,
+    peekable_benchmark,
+    //union_benchmark,
     // intersection_benchmark,
     // difference_benchmark,
     // symmetric_difference_benchmark,

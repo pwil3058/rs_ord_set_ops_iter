@@ -2,7 +2,7 @@
 
 use std::cmp::Ordering;
 
-use super::{OrdSetOpsIter, PeepAdvanceIter};
+use super::{OrdSetIterSetOpsIterator, PeepAdvanceIter};
 
 #[macro_export]
 macro_rules! difference_next {
@@ -62,8 +62,20 @@ macro_rules! difference_peep {
 
 #[derive(Clone)]
 pub struct DifferenceIterator<'a, T: Ord + Clone> {
-    pub left_iter: OrdSetOpsIter<'a, T>,
-    pub right_iter: OrdSetOpsIter<'a, T>,
+    left_iter: Box<dyn PeepAdvanceIter<'a, T> + 'a>,
+    right_iter: Box<dyn PeepAdvanceIter<'a, T> + 'a>,
+}
+
+impl<'a, T: Ord + Clone> DifferenceIterator<'a, T> {
+    pub fn new(
+        left_iter: impl PeepAdvanceIter<'a, T> + 'a,
+        right_iter: impl PeepAdvanceIter<'a, T> + 'a,
+    ) -> Self {
+        Self {
+            left_iter: Box::new(left_iter),
+            right_iter: Box::new(right_iter),
+        }
+    }
 }
 
 impl<'a, T: Ord + Clone> Iterator for DifferenceIterator<'a, T> {
@@ -91,4 +103,9 @@ where
         self.left_iter.advance_after(target);
         self.right_iter.advance_after(target);
     }
+}
+
+impl<'a, T: 'a + Ord + Clone + Default> OrdSetIterSetOpsIterator<'a, T>
+    for DifferenceIterator<'a, T>
+{
 }
