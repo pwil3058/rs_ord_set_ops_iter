@@ -10,9 +10,10 @@ use std::{
 };
 
 use ord_set_iter_set_ops::{
-    difference_next, difference_peep, intersection_next, intersection_peep,
-    symmetric_difference_next, symmetric_difference_peep, union_next, union_peep,
-    OrdSetIterSetOpsIterator, PeepAdvanceIter,
+    are_disjoint, difference_next, difference_peep, intersection_next, intersection_peep,
+    left_is_proper_subset_of_right, left_is_proper_superset_of_right, left_is_subset_of_right,
+    left_is_superset_of_right, symmetric_difference_next, symmetric_difference_peep, union_next,
+    union_peep, OrdSetIterSetOpsIterator, PeepAdvanceIter,
 };
 
 pub mod convert;
@@ -58,16 +59,6 @@ impl<T: Ord> OrdListSet<T> {
         }
     }
 }
-
-// impl<'a, T: 'a + Ord + Clone> SetOsoIter<'a, T> for OrdListSet<T> {
-//     /// Return a set operations iterator over the members in the `OrdListSet` in ascending order.
-//     fn oso_iter(&'a self) -> OrdSetOpsIter<'a, T> {
-//         OrdSetOpsIter::new(OrdListSetIter {
-//             elements: &self.members,
-//             index: 0,
-//         })
-//     }
-// }
 
 enum UsizeRangeBounds {
     Range(usize, usize),
@@ -509,31 +500,31 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// Is the output of the given Iterator disjoint from the output of
     /// this iterator?
     pub fn is_disjoint(&self, other: &'a Self) -> bool {
-        self.iter().is_disjoint(other.iter())
+        are_disjoint!(self.iter(), other.iter())
     }
 
     /// Is the output of the given Iterator a proper subset of the output of
     /// this iterator?
     pub fn is_proper_subset(&self, other: &'a Self) -> bool {
-        self.iter().is_proper_subset(other.iter())
+        left_is_proper_subset_of_right!(self.iter(), other.iter())
     }
 
     /// Is the output of the given Iterator a proper superset of the output of
     /// this iterator?
     pub fn is_proper_superset(&self, other: &'a Self) -> bool {
-        self.iter().is_proper_superset(other.iter())
+        left_is_proper_superset_of_right!(self.iter(), other.iter())
     }
 
     /// Is the output of the given Iterator a subset of the output of
     /// this iterator?
     pub fn is_subset(&self, other: &'a Self) -> bool {
-        self.iter().is_subset(other.iter())
+        left_is_subset_of_right!(self.iter(), other.iter())
     }
 
     /// Is the output of the given Iterator a superset of the output of
     /// this iterator?
     pub fn is_superset(&self, other: &'a Self) -> bool {
-        self.iter().is_superset(other.iter())
+        left_is_superset_of_right!(self.iter(), other.iter())
     }
 }
 
