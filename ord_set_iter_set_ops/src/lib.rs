@@ -11,10 +11,10 @@ pub mod set_relationships;
 pub mod symmetric_difference_iterator;
 pub mod union_iterator;
 
-use difference_iterator::*;
-use intersection_iterator::*;
-use symmetric_difference_iterator::*;
-use union_iterator::*;
+pub use difference_iterator::*;
+pub use intersection_iterator::*;
+pub use symmetric_difference_iterator::*;
+pub use union_iterator::*;
 
 /// Ordered Iterator over set operations on the contents of an ordered set.
 #[clonable]

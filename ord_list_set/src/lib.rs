@@ -15,6 +15,10 @@ use ord_set_iter_set_ops::{
     OrdSetIterSetOpsIterator, PeepAdvanceIter,
 };
 
+pub mod convert;
+
+pub use convert::*;
+
 /// A set of items of type T ordered according to Ord (with no duplicates)
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OrdListSet<T: Ord> {
@@ -530,100 +534,6 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// this iterator?
     pub fn is_superset(&self, other: &'a Self) -> bool {
         self.iter().is_superset(other.iter())
-    }
-}
-
-fn is_sorted_and_no_dups<T: Ord>(list: &[T]) -> bool {
-    if !list.is_empty() {
-        let mut last = &list[0];
-        for element in list[1..].iter() {
-            if element <= last {
-                return false;
-            } else {
-                last = element;
-            }
-        }
-    }
-    true
-}
-
-impl<T: Ord, const N: usize> From<[T; N]> for OrdListSet<T> {
-    fn from(members: [T; N]) -> Self {
-        let mut members = Vec::from(members);
-        members.sort_unstable();
-        debug_assert!(is_sorted_and_no_dups(&members));
-        Self { members }
-    }
-}
-
-impl<T: Ord + Clone> From<&[T]> for OrdListSet<T> {
-    fn from(members: &[T]) -> Self {
-        let mut members = Vec::from(members);
-        members.sort_unstable();
-        debug_assert!(is_sorted_and_no_dups(&members));
-        Self { members }
-    }
-}
-
-impl<T: Ord> From<BTreeSet<T>> for OrdListSet<T> {
-    fn from(mut set: BTreeSet<T>) -> Self {
-        let mut members: Vec<T> = Vec::with_capacity(set.len());
-        while let Some(member) = set.pop_first() {
-            members.push(member);
-        }
-        Self { members }
-    }
-}
-
-#[allow(clippy::from_over_into)] // NB: we can't do from on an imported struct
-impl<T: Ord + Clone> Into<BTreeSet<T>> for OrdListSet<T> {
-    fn into(self) -> BTreeSet<T> {
-        BTreeSet::<T>::from_iter(self.iter().cloned())
-    }
-}
-
-// TODO: implement from for all known iterators
-// impl<'a, T: Ord + Clone> From<dyn PeepAdvanceIter<'a, T>> for OrdListSet<T> {
-//     fn from(oso_iter: dyn PeepAdvanceIter<T>) -> Self {
-//         let members: Vec<T> = oso_iter.cloned().collect();
-//         Self { members }
-//     }
-// }
-
-impl<'a, T: Ord + Clone> From<Union<'a, T>> for OrdListSet<T> {
-    fn from(iter: Union<'a, T>) -> Self {
-        let members: Vec<T> = iter.cloned().collect();
-        Self { members }
-    }
-}
-
-impl<'a, T: Ord + Clone> From<Intersection<'a, T>> for OrdListSet<T> {
-    fn from(iter: Intersection<'a, T>) -> Self {
-        let members: Vec<T> = iter.cloned().collect();
-        Self { members }
-    }
-}
-
-impl<'a, T: Ord + Clone> From<Difference<'a, T>> for OrdListSet<T> {
-    fn from(iter: Difference<'a, T>) -> Self {
-        let members: Vec<T> = iter.cloned().collect();
-        Self { members }
-    }
-}
-
-impl<'a, T: Ord + Clone> From<SymmetricDifference<'a, T>> for OrdListSet<T> {
-    fn from(iter: SymmetricDifference<'a, T>) -> Self {
-        let members: Vec<T> = iter.cloned().collect();
-        Self { members }
-    }
-}
-
-impl<T: Ord> FromIterator<T> for OrdListSet<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let mut members: Vec<T> = iter.into_iter().collect();
-        members.sort_unstable();
-        debug_assert!(is_sorted_and_no_dups(&members));
-        Self { members }
     }
 }
 

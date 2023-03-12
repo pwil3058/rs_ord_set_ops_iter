@@ -1,6 +1,7 @@
 // Copyright 2023 Peter Williams <pwil3058@gmail.com> <pwil3058@bigpond.net.au>
 
 use std::cmp::Ordering;
+use std::collections::BTreeSet;
 
 use super::{OrdSetIterSetOpsIterator, PeepAdvanceIter};
 
@@ -108,4 +109,11 @@ where
 impl<'a, T: 'a + Ord + Clone + Default> OrdSetIterSetOpsIterator<'a, T>
     for SymmetricDifferenceIterator<'a, T>
 {
+}
+
+#[allow(clippy::from_over_into)] // NB: we can't do From() on an imported struct
+impl<'a, T: 'a + Ord + Clone> Into<BTreeSet<T>> for SymmetricDifferenceIterator<'a, T> {
+    fn into(self) -> BTreeSet<T> {
+        BTreeSet::<T>::from_iter(self.cloned())
+    }
 }
