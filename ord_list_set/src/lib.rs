@@ -20,10 +20,36 @@ pub mod convert;
 
 pub use convert::*;
 
-/// A set of items of type T ordered according to Ord (with no duplicates)
+/// An immutable set of items of type T ordered according to Ord (with no duplicates)
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OrdListSet<T: Ord> {
     members: Vec<T>,
+}
+
+impl<T: Ord> PartialEq<BTreeSet<T>> for OrdListSet<T> {
+    /// Are the contents of this `OrdListSet` and the `BTreeSet` `other` the same?
+    ///
+    /// Examples
+    /// ```
+    /// use std::collections::BTreeSet;
+    /// use ord_list_set::OrdListSet;
+    ///
+    /// assert_eq!(OrdListSet::from(["a", "b", "c"]), BTreeSet::from(["a", "b", "c"]));
+    /// assert_ne!(OrdListSet::from(["a", "b", "c"]), BTreeSet::from(["a", "b", "d"]));
+    /// ```
+    fn eq(&self, other: &BTreeSet<T>) -> bool {
+        if self.len() == other.len() {
+            let mut other_iter = other.iter();
+            for value in self.iter() {
+                if other_iter.next() != Some(value) {
+                    return false;
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl<T: Ord> Default for OrdListSet<T> {
@@ -35,6 +61,7 @@ impl<T: Ord> Default for OrdListSet<T> {
 }
 
 impl<T: Ord> OrdListSet<T> {
+    /// An 'OrdListSet' with no contents.
     pub fn empty_set() -> Self {
         Self::default()
     }
@@ -216,7 +243,7 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
         self.items_private(&self.usize_range_bounds(range))
     }
 
-    /// Returns an OrdListSet<T> subset of using indices.
+    /// Returns an `OrdListSet<T>` subset of the set using indices.
     ///
     /// # Examples
     ///
@@ -226,18 +253,18 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// let set = OrdListSet::<&str>::from(["a", "d", "f", "h", "j", "k", "l"]);
     ///
     /// assert!(set.get_subset(set.len()..).is_empty());
-    /// assert_eq!(set.get_subset(..=2), ["a", "d", "f",].into());
-    /// assert_eq!(set.get_subset(..2), ["a", "d", ].into());
-    /// assert_eq!(set.get_subset(1..5), ["d", "f", "h", "j"].into());
-    /// assert_eq!(set.get_subset(1..=5), ["d", "f", "h", "j", "k"].into());
-    /// assert_eq!(set.get_subset(..), ["a", "d", "f", "h", "j", "k", "l"].into());
-    /// assert_eq!(set.get_subset(2..), ["f", "h", "j", "k", "l"].into());
+    /// assert_eq!(set.get_subset(..=2), OrdListSet::from(["a", "d", "f",]));
+    /// assert_eq!(set.get_subset(..2), OrdListSet::from(["a", "d", ]));
+    /// assert_eq!(set.get_subset(1..5), OrdListSet::from(["d", "f", "h", "j"]));
+    /// assert_eq!(set.get_subset(1..=5), OrdListSet::from(["d", "f", "h", "j", "k"]));
+    /// assert_eq!(set.get_subset(..), OrdListSet::from(["a", "d", "f", "h", "j", "k", "l"]));
+    /// assert_eq!(set.get_subset(2..), OrdListSet::from(["f", "h", "j", "k", "l"]));
     /// ```
     pub fn get_subset(&self, range: impl RangeBounds<usize>) -> OrdListSet<T> {
         Self::from(self.items(range))
     }
 
-    /// Returns an OrdListSet<T> subset of using items.
+    /// Returns an `OrdListSet<T>` subset of using items.
     ///
     /// # Examples
     ///
@@ -247,16 +274,16 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// let set = OrdListSet::<&str>::from(["a", "d", "f", "h", "j", "k", "l"]);
     ///
     /// assert!(set.get_item_subset("m"..).is_empty());
-    /// assert_eq!(set.get_item_subset(..="f"), ["a", "d", "f",].into());
-    /// assert_eq!(set.get_item_subset(..="g"), ["a", "d", "f",].into());
-    /// assert_eq!(set.get_item_subset(.."f"), ["a", "d", ].into());
-    /// assert_eq!(set.get_item_subset(.."g"), ["a", "d", "f"].into());
-    /// assert_eq!(set.get_item_subset("d".."k"), ["d", "f", "h", "j"].into());
-    /// assert_eq!(set.get_item_subset("c".."k"), ["d", "f", "h", "j"].into());
-    /// assert_eq!(set.get_item_subset("d"..="k"), ["d", "f", "h", "j", "k"].into());
-    /// assert_eq!(set.get_item_subset(..), ["a", "d", "f", "h", "j", "k", "l"].into());
-    /// assert_eq!(set.get_item_subset("f"..), ["f", "h", "j", "k", "l"].into());
-    /// assert_eq!(set.get_item_subset("e"..), ["f", "h", "j", "k", "l"].into());
+    /// assert_eq!(set.get_item_subset(..="f"), OrdListSet::from(["a", "d", "f",]));
+    /// assert_eq!(set.get_item_subset(..="g"), OrdListSet::from(["a", "d", "f",]));
+    /// assert_eq!(set.get_item_subset(.."f"), OrdListSet::from(["a", "d", ]));
+    /// assert_eq!(set.get_item_subset(.."g"), OrdListSet::from(["a", "d", "f"]));
+    /// assert_eq!(set.get_item_subset("d".."k"), OrdListSet::from(["d", "f", "h", "j"]));
+    /// assert_eq!(set.get_item_subset("c".."k"), OrdListSet::from(["d", "f", "h", "j"]));
+    /// assert_eq!(set.get_item_subset("d"..="k"), OrdListSet::from(["d", "f", "h", "j", "k"]));
+    /// assert_eq!(set.get_item_subset(..), OrdListSet::from(["a", "d", "f", "h", "j", "k", "l"]));
+    /// assert_eq!(set.get_item_subset("f"..), OrdListSet::from(["f", "h", "j", "k", "l"]));
+    /// assert_eq!(set.get_item_subset("e"..), OrdListSet::from(["f", "h", "j", "k", "l"]));
     /// ```
     pub fn get_item_subset(&self, range: impl RangeBounds<T>) -> OrdListSet<T> {
         Self::from(self.item_items(range))
@@ -497,32 +524,27 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
         }
     }
 
-    /// Is the output of the given Iterator disjoint from the output of
-    /// this iterator?
+    /// Is `other` disjoint from this set?
     pub fn is_disjoint(&self, other: &'a Self) -> bool {
         are_disjoint!(self.iter(), other.iter())
     }
 
-    /// Is the output of the given Iterator a proper subset of the output of
-    /// this iterator?
+    /// Is this set a proper subset of `other`?
     pub fn is_proper_subset(&self, other: &'a Self) -> bool {
         left_is_proper_subset_of_right!(self.iter(), other.iter())
     }
 
-    /// Is the output of the given Iterator a proper superset of the output of
-    /// this iterator?
+    /// Is this set a proper superset of `other`?
     pub fn is_proper_superset(&self, other: &'a Self) -> bool {
         left_is_proper_superset_of_right!(self.iter(), other.iter())
     }
 
-    /// Is the output of the given Iterator a subset of the output of
-    /// this iterator?
+    /// Is this set a subset of `other`?
     pub fn is_subset(&self, other: &'a Self) -> bool {
         left_is_subset_of_right!(self.iter(), other.iter())
     }
 
-    /// Is the output of the given Iterator a superset of the output of
-    /// this iterator?
+    /// Is this set a superset of `other`?
     pub fn is_superset(&self, other: &'a Self) -> bool {
         left_is_superset_of_right!(self.iter(), other.iter())
     }
