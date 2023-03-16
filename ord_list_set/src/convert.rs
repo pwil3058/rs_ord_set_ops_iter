@@ -6,25 +6,12 @@ use ord_set_iter_set_ops::{
     DifferenceIterator, IntersectionIterator, SymmetricDifferenceIterator, UnionIterator,
 };
 
-fn is_sorted_and_no_dups<T: Ord>(list: &[T]) -> bool {
-    if !list.is_empty() {
-        let mut last = &list[0];
-        for element in list[1..].iter() {
-            if element <= last {
-                return false;
-            } else {
-                last = element;
-            }
-        }
-    }
-    true
-}
-
 impl<T: Ord, const N: usize> From<[T; N]> for OrdListSet<T> {
     fn from(members: [T; N]) -> Self {
         let mut members = Vec::from(members);
         members.sort_unstable();
-        debug_assert!(is_sorted_and_no_dups(&members));
+        members.dedup();
+        members.shrink_to_fit();
         Self { members }
     }
 }
@@ -33,7 +20,8 @@ impl<T: Ord + Clone> From<&[T]> for OrdListSet<T> {
     fn from(members: &[T]) -> Self {
         let mut members = Vec::from(members);
         members.sort_unstable();
-        debug_assert!(is_sorted_and_no_dups(&members));
+        members.dedup();
+        members.shrink_to_fit();
         Self { members }
     }
 }
@@ -131,7 +119,7 @@ impl<T: Ord> FromIterator<T> for OrdListSet<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut members: Vec<T> = iter.into_iter().collect();
         members.sort_unstable();
-        debug_assert!(is_sorted_and_no_dups(&members));
+        members.dedup();
         members.shrink_to_fit();
         Self { members }
     }

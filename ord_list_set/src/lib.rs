@@ -85,6 +85,24 @@ impl<T: Ord> OrdListSet<T> {
             index: 0,
         }
     }
+
+    pub fn is_valid(&self) -> bool {
+        is_sorted_and_no_dups(&self.members)
+    }
+}
+
+fn is_sorted_and_no_dups<T: Ord>(list: &[T]) -> bool {
+    if !list.is_empty() {
+        let mut last = &list[0];
+        for element in list[1..].iter() {
+            if element <= last {
+                return false;
+            } else {
+                last = element;
+            }
+        }
+    }
+    true
 }
 
 enum UsizeRangeBounds {
