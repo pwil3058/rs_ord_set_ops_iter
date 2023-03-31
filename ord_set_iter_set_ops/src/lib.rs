@@ -23,6 +23,7 @@ pub trait PeepAdvanceIter<'a, T: 'a + Ord>: Iterator<Item = &'a T> + 'a + Clone 
     fn peep(&mut self) -> Option<&'a T>;
 
     /// Will the next next() call return None? I.e. is the iterator exhausted?
+    #[allow(clippy::wrong_self_convention)]
     fn is_empty(&mut self) -> bool {
         self.peep().is_none()
     }
@@ -61,6 +62,7 @@ pub trait OrdSetIterSetOpsIterator<'a, T: 'a + Ord + Clone>:
     fn is_disjoint(mut self, mut other: impl PeepAdvanceIter<'a, T>) -> bool {
         are_disjoint!(self, other)
     }
+
     #[allow(clippy::wrong_self_convention)]
     fn is_subset(mut self, mut other: impl PeepAdvanceIter<'a, T>) -> bool {
         left_is_subset_of_right!(self, other)
@@ -79,6 +81,15 @@ pub trait OrdSetIterSetOpsIterator<'a, T: 'a + Ord + Clone>:
     #[allow(clippy::wrong_self_convention)]
     fn is_proper_superset(mut self, mut other: impl PeepAdvanceIter<'a, T>) -> bool {
         left_is_proper_superset_of_right!(self, other)
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    fn is_equal(mut self, mut other: impl PeepAdvanceIter<'a, T>) -> bool {
+        left_is_equal_to_right!(self, other)
+    }
+
+    fn compare(mut self, mut other: impl PeepAdvanceIter<'a, T>) -> Ordering {
+        left_cmp_right!(self, other)
     }
 
     fn difference(

@@ -28,6 +28,61 @@ macro_rules! are_disjoint {
 }
 
 #[macro_export]
+macro_rules! left_is_equal_to_right {
+    ($left_iter: expr, $right_iter: expr) => {{
+        loop {
+            if let Some(my_item) = $left_iter.peep() {
+                if let Some(other_item) = $right_iter.peep() {
+                    match my_item.cmp(other_item) {
+                        Ordering::Less | Ordering::Greater => {
+                            break false;
+                        }
+                        Ordering::Equal => {
+                            $right_iter.next();
+                            $left_iter.next();
+                        }
+                    }
+                } else {
+                    break false;
+                }
+            } else {
+                break $right_iter.peep().is_none();
+            }
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! left_cmp_right {
+    ($left_iter: expr, $right_iter: expr) => {{
+        loop {
+            if let Some(my_item) = $left_iter.peep() {
+                if let Some(other_item) = $right_iter.peep() {
+                    match my_item.cmp(other_item) {
+                        Ordering::Less => {
+                            break Ordering::Less;
+                        }
+                        Ordering::Greater => {
+                            break Ordering::Greater;
+                        }
+                        Ordering::Equal => {
+                            $right_iter.next();
+                            $left_iter.next();
+                        }
+                    }
+                } else {
+                    break Ordering::Greater;
+                }
+            } else if $right_iter.peep().is_some() {
+                break Ordering::Less;
+            } else {
+                break Ordering::Equal;
+            }
+        }
+    }};
+}
+
+#[macro_export]
 macro_rules! left_is_superset_of_right {
     ($left_iter: expr, $right_iter: expr) => {{
         loop {
