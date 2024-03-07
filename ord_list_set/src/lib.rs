@@ -18,8 +18,6 @@ use ord_set_iter_set_ops::{
 
 pub mod convert;
 
-pub use convert::*;
-
 /// An immutable set of items of type T ordered according to Ord (with no duplicates)
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OrdListSet<T: Ord> {
@@ -687,19 +685,62 @@ impl<'a, T: Ord> Clone for OrdListSetIter<'a, T> {
 impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
     type Item = &'a T;
 
+    /// Return the next `Some(Item)` in the iterator or `None` if the iteration is complete.
+    /// # Examples
+    /// ```
+    /// use ord_list_set::OrdListSet;
+    ///
+    /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3,]);
+    /// let mut iter = a.iter();
+    /// assert_eq!(iter.next(), Some(&1));
+    /// assert_eq!(iter.next(), Some(&2));
+    /// assert_eq!(iter.next(), Some(&3));
+    /// assert_eq!(iter.next(), Some(&7));
+    /// assert_eq!(iter.next(), Some(&8));
+    /// assert_eq!(iter.next(), Some(&9));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     fn next(&mut self) -> Option<Self::Item> {
         let index = self.index;
         self.index += 1;
         self.elements.get(index)
     }
 
-    fn collect<B: FromIterator<Self::Item>>(self) -> B
+    /// Transform this iterator into a collection.
+    /// # Example
+    /// ```
+    /// use ord_list_set::OrdListSet;
+    ///
+    /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3,]);
+    /// let list: Vec<_> = a.iter().collect();
+    /// assert_eq!(list, [&1, &2, &3, &7, &8, &9]);
+    /// ```
+    fn collect<B>(self) -> B
     where
+        B: FromIterator<Self::Item>,
         Self: Sized,
     {
         self.elements[self.index..].iter().collect()
     }
 
+    /// Returns the `n`the element (starting from `0`) remaining in the iterator.
+    /// All preceding elements and the returned element will be removed from the iterator.
+    ///
+    /// `nth()` will return [`None`] if `n` is greater than or equal to the length of the
+    /// iterator.
+    ///
+    /// Example.
+    ///
+    /// ```
+    /// use ord_list_set::OrdListSet;
+    ///
+    /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3,]);
+    /// let mut iter = a.iter();
+    /// assert_eq!(iter.nth(2), Some(&3));
+    /// assert_eq!(iter.next(), Some(&7));
+    /// assert_eq!(iter.nth(1), Some(&9));
+    /// assert_eq!(iter.nth(0), None);
+    /// ```
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.index += n;
         self.next()
@@ -715,6 +756,7 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
 }
 
 impl<'a, T: Ord> OrdListSetIter<'a, T> {
+    /// Returns the number of elements remaining in the iterator.
     pub fn len(&self) -> usize {
         // avoid subtraction error
         if self.is_empty() {
@@ -724,6 +766,7 @@ impl<'a, T: Ord> OrdListSetIter<'a, T> {
         }
     }
 
+    /// Returns whether the iterator has any remaining elements.
     pub fn is_empty(&self) -> bool {
         self.index >= self.elements.len()
     }
@@ -731,12 +774,40 @@ impl<'a, T: Ord> OrdListSetIter<'a, T> {
 
 impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for OrdListSetIter<'a, T> {
     /// Peep at the next item in the iterator without advancing the iterator.
+    ///
+    /// Example
+    /// ```
+    /// use ord_list_set::OrdListSet;
+    /// use ord_set_iter_set_ops::PeepAdvanceIter;
+    ///
+    /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3,]);
+    /// let mut iter = a.iter();
+    /// assert_eq!(iter.next(), Some(&1));
+    /// assert_eq!(iter.peep(), Some(&2));
+    /// assert_eq!(iter.next(), Some(&2));
+    /// assert_eq!(iter.peep(), iter.next());
+    /// ```
     fn peep(&mut self) -> Option<&'a T> {
         self.elements.get(self.index)
     }
 
     /// Advance this iterator to the next item at or after the given item.
     /// Implementation is O(log(n)).
+    ///
+    /// Example
+    /// ```
+    /// use ord_list_set::OrdListSet;
+    /// use ord_set_iter_set_ops::PeepAdvanceIter;
+    ///
+    /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3,]);
+    /// let mut iter = a.iter();
+    /// iter.advance_until(&3);
+    /// assert_eq!(iter.next(), Some(&3));
+    /// iter.advance_until(&6);
+    /// assert_eq!(iter.peep(), Some(&7));
+    /// iter.advance_until(&10);
+    /// assert_eq!(iter.next(), None);
+    /// ```
     fn advance_until(&mut self, t: &T) {
         // Make sure we don't go backwards
         if let Some(item) = self.peep() {
@@ -751,6 +822,21 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for OrdListSetIter<'a, T> {
 
     /// Advance this iterator to the next item at or after the given item.
     /// Default implementation is O(n) but custom built implementations could be as good as O(log(n)).
+    ///
+    /// Example
+    /// ```
+    /// use ord_list_set::OrdListSet;
+    /// use ord_set_iter_set_ops::PeepAdvanceIter;
+    ///
+    /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3, 5]);
+    /// let mut iter = a.iter();
+    /// iter.advance_after(&3);
+    /// assert_eq!(iter.next(), Some(&5));
+    /// iter.advance_after(&6);
+    /// assert_eq!(iter.peep(), Some(&7));
+    /// iter.advance_after(&9);
+    /// assert_eq!(iter.next(), None);
+    /// ```
     fn advance_after(&mut self, t: &T) {
         // Make sure we don't go backwards
         if let Some(item) = self.peep() {
