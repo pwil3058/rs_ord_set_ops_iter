@@ -30,7 +30,7 @@ impl<T: Ord> PartialEq<BTreeSet<T>> for OrdListSet<T> {
     /// Examples
     /// ```
     /// use std::collections::BTreeSet;
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// assert_eq!(OrdListSet::from(["a", "b", "c"]), BTreeSet::from(["a", "b", "c"]));
     /// assert_ne!(OrdListSet::from(["a", "b", "c"]), BTreeSet::from(["a", "b", "d"]));
@@ -80,6 +80,7 @@ impl<T: Ord> OrdListSet<T> {
     pub fn iter(&self) -> OrdListSetIter<T> {
         OrdListSetIter {
             elements: &self.members,
+            iter: self.members.iter(),
             index: 0,
         }
     }
@@ -218,7 +219,7 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let set = OrdListSet::<&str>::from(["a", "d", "f", "h", "j", "k", "l"]);
     ///
@@ -239,7 +240,7 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let set = OrdListSet::<&str>::from(["a", "d", "f", "h", "j", "k", "l"]);
     ///
@@ -264,7 +265,7 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let set = OrdListSet::<&str>::from(["a", "d", "f", "h", "j", "k", "l"]);
     ///
@@ -285,7 +286,7 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let set = OrdListSet::<&str>::from(["a", "d", "f", "h", "j", "k", "l"]);
     ///
@@ -462,7 +463,7 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let a = OrdListSet::<&str>::from(["a", "d", "f", "h"]);
     /// let b = OrdListSet::<&str>::from(["b", "c", "d", "i", "h"]);
@@ -483,7 +484,7 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let a = OrdListSet::<&str>::from(["a", "d", "f", "h"]);
     /// let b = OrdListSet::<&str>::from(["b", "c", "d", "i", "h"]);
@@ -504,7 +505,7 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let a = OrdListSet::<&str>::from(["a", "d", "f", "h"]);
     /// let b = OrdListSet::<&str>::from(["b", "c", "d", "i", "h"]);
@@ -525,7 +526,7 @@ impl<'a, T: 'a + Ord + Clone> OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let a: OrdListSet<&str> = ["a", "d", "f", "h"].into();
     /// let b: OrdListSet<&str> = ["b", "c", "d", "i", "h"].into();
@@ -574,7 +575,7 @@ impl<T: Ord + Clone> Sub<&OrdListSet<T>> for &OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let a = OrdListSet::<u32>::from([1, 2, 3, 5]);
     /// let b = OrdListSet::<u32>::from([2, 3, 4]);
@@ -594,7 +595,7 @@ impl<T: Ord + Clone> BitAnd<&OrdListSet<T>> for &OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let a = OrdListSet::<u32>::from([1, 2, 3, 5]);
     /// let b = OrdListSet::<u32>::from([2, 3, 4]);
@@ -614,7 +615,7 @@ impl<T: Ord + Clone> BitXor<&OrdListSet<T>> for &OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let a = OrdListSet::<u32>::from([1, 2, 3, 5]);
     /// let b = OrdListSet::<u32>::from([2, 3, 4]);
@@ -634,7 +635,7 @@ impl<T: Ord + Clone> BitOr<&OrdListSet<T>> for &OrdListSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let a = OrdListSet::<u32>::from([1, 2, 3]);
     /// let b = OrdListSet::<u32>::from([2, 3, 4]);
@@ -652,7 +653,7 @@ impl<T: Ord + Clone> BitOr<&OrdListSet<T>> for &OrdListSet<T> {
 ///
 /// # Examples
 /// ```
-/// use ord_list_set::OrdListSet;
+/// use ord_list_set_alt::OrdListSet;
 /// use ord_set_iter_set_ops::OrdSetIterSetOpsIterator;
 ///
 /// let a = OrdListSet::<u32>::from([1, 2, 3, 7, 8, 9]);
@@ -670,6 +671,7 @@ impl<T: Ord + Clone> BitOr<&OrdListSet<T>> for &OrdListSet<T> {
 #[derive(Default)]
 pub struct OrdListSetIter<'a, T: Ord> {
     elements: &'a [T],
+    iter: std::slice::Iter<'a, T>,
     index: usize,
 }
 
@@ -677,6 +679,7 @@ impl<'a, T: Ord> Clone for OrdListSetIter<'a, T> {
     fn clone(&self) -> Self {
         Self {
             elements: self.elements,
+            iter: self.iter.clone(),
             index: self.index,
         }
     }
@@ -688,7 +691,7 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
     /// Return the next `Some(Item)` in the iterator or `None` if the iteration is complete.
     /// # Examples
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3,]);
     /// let mut iter = a.iter();
@@ -701,15 +704,14 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
     /// assert_eq!(iter.next(), None);
     /// ```
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.index;
         self.index += 1;
-        self.elements.get(index)
+        self.iter.next()
     }
 
     /// Transform this iterator into a collection.
     /// # Example
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3,]);
     /// let list: Vec<_> = a.iter().collect();
@@ -732,7 +734,7 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
     /// Example.
     ///
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     ///
     /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3,]);
     /// let mut iter = a.iter();
@@ -743,6 +745,7 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
     /// ```
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.index += n;
+        self.iter = self.elements[self.index..].iter();
         self.next()
     }
 
@@ -777,7 +780,7 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for OrdListSetIter<'a, T> {
     ///
     /// Example
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     /// use ord_set_iter_set_ops::PeepAdvanceIter;
     ///
     /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3,]);
@@ -796,7 +799,7 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for OrdListSetIter<'a, T> {
     ///
     /// Example
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     /// use ord_set_iter_set_ops::PeepAdvanceIter;
     ///
     /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3,]);
@@ -816,6 +819,7 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for OrdListSetIter<'a, T> {
                     Ok(index) => index,
                     Err(index) => index,
                 };
+                self.iter = self.elements[self.index..].iter();
             }
         }
     }
@@ -825,7 +829,7 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for OrdListSetIter<'a, T> {
     ///
     /// Example
     /// ```
-    /// use ord_list_set::OrdListSet;
+    /// use ord_list_set_alt::OrdListSet;
     /// use ord_set_iter_set_ops::PeepAdvanceIter;
     ///
     /// let a = OrdListSet::<u32>::from([1, 7, 8, 9, 2, 3, 5]);
@@ -845,6 +849,7 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for OrdListSetIter<'a, T> {
                     Ok(index) => index + 1,
                     Err(index) => index,
                 };
+                self.iter = self.elements[self.index..].iter();
             }
         }
     }
