@@ -3,5 +3,5 @@
 members = [
     "ord_set_iter_set_ops",
     "ord_list_set",
-#    "ord_list_set_mod",
+    "ord_list_set_alt",
 ]
