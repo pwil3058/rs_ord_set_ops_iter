@@ -1,16 +1,15 @@
 // Copyright 2023 Peter Williams <pwil3058@gmail.com> <pwil3058@bigpond.net.au>
 use criterion::{criterion_group, criterion_main, Criterion};
-use ord_list_set::*;
-use std::collections::btree_set::*;
-use std::iter::FromIterator;
+use ord_list_set;
+use ord_list_set_alt::*;
 
 pub fn from_benchmark(c: &mut Criterion) {
     let data = ["a", "b", "c", "g", "e", "f"];
 
     let mut group = c.benchmark_group("OrdListSet: From([T])");
-    group.bench_function("BTreeSet", |b| {
+    group.bench_function("ord_list_set::OrdListSet", |b| {
         b.iter(|| {
-            let _result = BTreeSet::<&str>::from(data);
+            let _result = ord_list_set::OrdListSet::<&str>::from(data);
         })
     });
     group.bench_function("OrdListSet", |b| {
@@ -21,15 +20,17 @@ pub fn from_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
-pub fn iter_benchmark(c: &mut Criterion) {
-    let data = ["a", "b", "c", "g", "e", "f"];
-    let btree_set = BTreeSet::from(data);
+pub fn collect_benchmark(c: &mut Criterion) {
+    let data = [
+        "a", "b", "c", "g", "e", "f", "h", "i", "j", "k", "l", "m", "n", "o", "p",
+    ];
+    let orig_ord_list_set = ord_list_set::OrdListSet::from(data);
     let ord_list_set = OrdListSet::from(data);
 
     let mut group = c.benchmark_group("OrdListSet: iter().collect()");
-    group.bench_function("BTreeSet", |b| {
+    group.bench_function("ord_list_set::OrdListSet", |b| {
         b.iter(|| {
-            let _result = btree_set.iter().collect::<Vec<_>>();
+            let _result = orig_ord_list_set.iter().collect::<Vec<_>>();
         })
     });
     group.bench_function("OrdListSet", |b| {
@@ -40,25 +41,77 @@ pub fn iter_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
+pub fn sum_benchmark(c: &mut Criterion) {
+    let data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    let orig_ord_list_set = ord_list_set::OrdListSet::from(data);
+    let ord_list_set = OrdListSet::from(data);
+
+    let mut group = c.benchmark_group("OrdListSet: iter().sum()");
+    group.bench_function("ord_list_set::OrdListSet", |b| {
+        b.iter(|| {
+            let _result = orig_ord_list_set.iter().sum::<i32>();
+        })
+    });
+    group.bench_function("OrdListSet", |b| {
+        b.iter(|| {
+            let _result = ord_list_set.iter().sum::<i32>();
+        })
+    });
+    group.finish();
+}
+
+pub fn next_benchmark(c: &mut Criterion) {
+    let data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    let orig_ord_list_set = ord_list_set::OrdListSet::from(data);
+    let ord_list_set = OrdListSet::from(data);
+
+    let mut group = c.benchmark_group("OrdListSetIter::next()");
+    group.bench_function("ord_list_set::OrdListSet", |b| {
+        b.iter(|| {
+            let mut sum = 0;
+            let mut iter = orig_ord_list_set.iter();
+            while let Some(i) = iter.next() {
+                sum += i;
+            }
+        })
+    });
+    group.bench_function("OrdListSet", |b| {
+        b.iter(|| {
+            let mut sum = 0;
+            let mut iter = ord_list_set.iter();
+            while let Some(i) = iter.next() {
+                sum += i;
+            }
+        })
+    });
+    group.finish();
+}
+
 pub fn difference_benchmark(c: &mut Criterion) {
     let data1 = ["a", "b", "c", "g", "e", "f"];
     let data2 = ["c", "f", "i", "l"];
-    let btree_set1 = BTreeSet::from(data1);
-    let btree_set2 = BTreeSet::from(data2);
+    let orig_ord_list_set1 = ord_list_set::OrdListSet::from(data1);
+    let orig_ord_list_set2 = ord_list_set::OrdListSet::from(data2);
     let ord_list_set1 = OrdListSet::from(data1);
     let ord_list_set2 = OrdListSet::from(data2);
 
     let mut group = c.benchmark_group("OrdListSet: Difference");
-    group.bench_function("BTreeSet: '-' operator'", |b| {
+    group.bench_function("ord_list_set::OrdListSet: '-' operator'", |b| {
         b.iter(|| {
-            let _result: BTreeSet<&str> = &btree_set1 - &btree_set2;
+            let _result: ord_list_set::OrdListSet<&str> = &orig_ord_list_set1 - &orig_ord_list_set2;
         })
     });
-    group.bench_function("BTreeSet: .difference().cloned().collect()", |b| {
-        b.iter(|| {
-            let _result: BTreeSet<&str> = btree_set1.difference(&btree_set2).cloned().collect();
-        })
-    });
+    group.bench_function(
+        "ord_list_set::OrdListSet: .difference().cloned().collect()",
+        |b| {
+            b.iter(|| {
+                let _result: ord_list_set::OrdListSet<&str> = orig_ord_list_set1
+                    .difference(&orig_ord_list_set2)
+                    .cloned()
+                    .collect();
+            })
+        },
+    );
     group.bench_function("OrdListSet: '-' operator'", |b| {
         b.iter(|| {
             let _result: OrdListSet<&str> = &ord_list_set1 - &ord_list_set2;
@@ -76,22 +129,28 @@ pub fn difference_benchmark(c: &mut Criterion) {
 pub fn union_benchmark(c: &mut Criterion) {
     let data1 = ["a", "b", "c", "g", "e", "f"];
     let data2 = ["c", "f", "i", "l"];
-    let btree_set1 = BTreeSet::from(data1);
-    let btree_set2 = BTreeSet::from(data2);
+    let orig_ord_list_set1 = ord_list_set::OrdListSet::from(data1);
+    let orig_ord_list_set2 = ord_list_set::OrdListSet::from(data2);
     let ord_list_set1 = OrdListSet::from(data1);
     let ord_list_set2 = OrdListSet::from(data2);
 
     let mut group = c.benchmark_group("OrdListSet: Union");
-    group.bench_function("BTreeSet: '|' operator'", |b| {
+    group.bench_function("ord_list_set::OrdListSet: '|' operator'", |b| {
         b.iter(|| {
-            let _result: BTreeSet<&str> = &btree_set1 | &btree_set2;
+            let _result: ord_list_set::OrdListSet<&str> = &orig_ord_list_set1 | &orig_ord_list_set2;
         })
     });
-    group.bench_function("BTreeSet: .union().cloned().collect()", |b| {
-        b.iter(|| {
-            let _result: BTreeSet<&str> = btree_set1.union(&btree_set2).cloned().collect();
-        })
-    });
+    group.bench_function(
+        "ord_list_set::OrdListSet: .union().cloned().collect()",
+        |b| {
+            b.iter(|| {
+                let _result: ord_list_set::OrdListSet<&str> = orig_ord_list_set1
+                    .union(&orig_ord_list_set2)
+                    .cloned()
+                    .collect();
+            })
+        },
+    );
     group.bench_function("OrdListSet: '|' operator'", |b| {
         b.iter(|| {
             let _result: OrdListSet<&str> = &ord_list_set1 | &ord_list_set2;
@@ -108,7 +167,9 @@ pub fn union_benchmark(c: &mut Criterion) {
 criterion_group!(
     benches,
     from_benchmark,
-    iter_benchmark,
+    collect_benchmark,
+    sum_benchmark,
+    next_benchmark,
     difference_benchmark,
     union_benchmark,
 );

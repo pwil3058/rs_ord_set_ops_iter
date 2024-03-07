@@ -722,7 +722,7 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
         B: FromIterator<Self::Item>,
         Self: Sized,
     {
-        self.elements[self.index..].iter().collect()
+        self.iter.collect()
     }
 
     /// Returns the `n`the element (starting from `0`) remaining in the iterator.
