@@ -4,7 +4,7 @@ use ord_list_set;
 use ord_list_set_alt::*;
 
 pub fn from_benchmark(c: &mut Criterion) {
-    let data = ["a", "b", "c", "g", "e", "f"];
+    let data = ["a", "b", "c", "g", "e", "f", "h", "k", "j", "i"];
 
     let mut group = c.benchmark_group("OrdListSet: From([T])");
     group.bench_function("ord_list_set::OrdListSet", |b| {
@@ -98,7 +98,7 @@ pub fn difference_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("OrdListSet: Difference");
     group.bench_function("ord_list_set::OrdListSet: '-' operator'", |b| {
         b.iter(|| {
-            let _result: ord_list_set::OrdListSet<&str> = &orig_ord_list_set1 - &orig_ord_list_set2;
+            let _result = &orig_ord_list_set1 - &orig_ord_list_set2;
         })
     });
     group.bench_function(
@@ -114,13 +114,19 @@ pub fn difference_benchmark(c: &mut Criterion) {
     );
     group.bench_function("OrdListSet: '-' operator'", |b| {
         b.iter(|| {
-            let _result: OrdListSet<&str> = &ord_list_set1 - &ord_list_set2;
+            let _result = &ord_list_set1 - &ord_list_set2;
         })
     });
     group.bench_function("OrdListSet: .difference().cloned().collect()", |b| {
         b.iter(|| {
             let _result: OrdListSet<&str> =
                 ord_list_set1.difference(&ord_list_set2).cloned().collect();
+        })
+    });
+    group.bench_function("OrdListSet: .difference().into()", |b| {
+        b.iter(|| {
+            let _result: OrdListSet<&str> =
+                ord_list_set1.difference(&ord_list_set2).into();
         })
     });
     group.finish();
@@ -153,7 +159,7 @@ pub fn union_benchmark(c: &mut Criterion) {
     );
     group.bench_function("OrdListSet: '|' operator'", |b| {
         b.iter(|| {
-            let _result: OrdListSet<&str> = &ord_list_set1 | &ord_list_set2;
+            let _result = &ord_list_set1 | &ord_list_set2;
         })
     });
     group.bench_function("OrdListSet: .union().cloned().collect()", |b| {

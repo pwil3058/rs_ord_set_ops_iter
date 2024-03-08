@@ -80,7 +80,6 @@ impl<T: Ord> OrdListSet<T> {
     pub fn iter(&self) -> OrdListSetIter<T> {
         OrdListSetIter {
             elements: &self.members,
-            iter: self.members.iter(),
             index: 0,
         }
     }
@@ -671,7 +670,6 @@ impl<T: Ord + Clone> BitOr<&OrdListSet<T>> for &OrdListSet<T> {
 #[derive(Default)]
 pub struct OrdListSetIter<'a, T: Ord> {
     elements: &'a [T],
-    iter: std::slice::Iter<'a, T>,
     index: usize,
 }
 
@@ -679,7 +677,6 @@ impl<'a, T: Ord> Clone for OrdListSetIter<'a, T> {
     fn clone(&self) -> Self {
         Self {
             elements: self.elements,
-            iter: self.iter.clone(),
             index: self.index,
         }
     }
@@ -704,8 +701,9 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
     /// assert_eq!(iter.next(), None);
     /// ```
     fn next(&mut self) -> Option<Self::Item> {
+        let index = self.index;
         self.index += 1;
-        self.iter.next()
+        self.elements.get(index)
     }
 
     /// Transform this iterator into a collection.
@@ -722,7 +720,7 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
         B: FromIterator<Self::Item>,
         Self: Sized,
     {
-        self.iter.collect()
+        self.elements[self.index..].iter().collect()
     }
 
     /// Returns the `n`the element (starting from `0`) remaining in the iterator.
@@ -745,7 +743,6 @@ impl<'a, T: Ord> Iterator for OrdListSetIter<'a, T> {
     /// ```
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.index += n;
-        self.iter = self.elements[self.index..].iter();
         self.next()
     }
 
@@ -819,7 +816,6 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for OrdListSetIter<'a, T> {
                     Ok(index) => index,
                     Err(index) => index,
                 };
-                self.iter = self.elements[self.index..].iter();
             }
         }
     }
@@ -849,7 +845,6 @@ impl<'a, T: 'a + Ord> PeepAdvanceIter<'a, T> for OrdListSetIter<'a, T> {
                     Ok(index) => index + 1,
                     Err(index) => index,
                 };
-                self.iter = self.elements[self.index..].iter();
             }
         }
     }
