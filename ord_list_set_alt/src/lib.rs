@@ -21,7 +21,7 @@ pub mod convert;
 /// An immutable set of items of type T ordered according to Ord (with no duplicates)
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OrdListSet<T: Ord> {
-    members: Vec<T>,
+    members: Box<[T]>,
 }
 
 impl<T: Ord> PartialEq<BTreeSet<T>> for OrdListSet<T> {
@@ -53,7 +53,7 @@ impl<T: Ord> PartialEq<BTreeSet<T>> for OrdListSet<T> {
 impl<T: Ord> Default for OrdListSet<T> {
     fn default() -> Self {
         Self {
-            members: Vec::new(),
+            members: Box::new([]),
         }
     }
 }
