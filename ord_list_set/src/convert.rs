@@ -11,8 +11,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for OrdListSet<T> {
         let mut members = Vec::from(members);
         members.sort_unstable();
         members.dedup();
-        members.shrink_to_fit();
-        Self { members }
+        Self { members: members.into_boxed_slice() }
     }
 }
 
@@ -21,8 +20,7 @@ impl<T: Ord + Clone> From<&[T]> for OrdListSet<T> {
         let mut members = Vec::from(members);
         members.sort_unstable();
         members.dedup();
-        members.shrink_to_fit();
-        Self { members }
+        Self { members: members.into_boxed_slice() }
     }
 }
 
@@ -32,7 +30,7 @@ impl<T: Ord> From<BTreeSet<T>> for OrdListSet<T> {
         while let Some(member) = set.pop_first() {
             members.push(member);
         }
-        Self { members }
+        Self { members: members.into_boxed_slice() }
     }
 }
 
@@ -45,73 +43,64 @@ impl<T: Ord + Clone> Into<BTreeSet<T>> for OrdListSet<T> {
 
 impl<'a, T: Ord + Clone> From<DifferenceIterator<'a, T>> for OrdListSet<T> {
     fn from(oso_iter: DifferenceIterator<'a, T>) -> Self {
-        let mut members: Vec<T> = oso_iter.cloned().collect();
-        members.shrink_to_fit();
-        Self { members }
+        let members: Vec<T> = oso_iter.cloned().collect();
+        Self { members: members.into_boxed_slice() }
     }
 }
 
 impl<'a, T: Ord + Clone> From<IntersectionIterator<'a, T>> for OrdListSet<T> {
     fn from(oso_iter: IntersectionIterator<'a, T>) -> Self {
-        let mut members: Vec<T> = oso_iter.cloned().collect();
-        members.shrink_to_fit();
-        Self { members }
+        let  members: Vec<T> = oso_iter.cloned().collect();
+        Self { members: members.into_boxed_slice() }
     }
 }
 
 impl<'a, T: Ord + Clone> From<SymmetricDifferenceIterator<'a, T>> for OrdListSet<T> {
     fn from(oso_iter: SymmetricDifferenceIterator<'a, T>) -> Self {
-        let mut members: Vec<T> = oso_iter.cloned().collect();
-        members.shrink_to_fit();
-        Self { members }
+        let members: Vec<T> = oso_iter.cloned().collect();
+        Self { members: members.into_boxed_slice() }
     }
 }
 
 impl<'a, T: Ord + Clone> From<UnionIterator<'a, T>> for OrdListSet<T> {
     fn from(oso_iter: UnionIterator<'a, T>) -> Self {
-        let mut members: Vec<T> = oso_iter.cloned().collect();
-        members.shrink_to_fit();
-        Self { members }
+        let members: Vec<T> = oso_iter.cloned().collect();
+        Self { members: members.into_boxed_slice() }
     }
 }
 
 impl<'a, T: Ord + Clone> From<OrdListSetIter<'a, T>> for OrdListSet<T> {
     fn from(iter: OrdListSetIter<'a, T>) -> Self {
-        let mut members: Vec<T> = iter.cloned().collect();
-        members.shrink_to_fit();
-        Self { members }
+        let members: Vec<T> = iter.cloned().collect();
+        Self { members: members.into_boxed_slice() }
     }
 }
 
 impl<'a, T: Ord + Clone> From<Union<'a, T>> for OrdListSet<T> {
     fn from(iter: Union<'a, T>) -> Self {
-        let mut members: Vec<T> = iter.cloned().collect();
-        members.shrink_to_fit();
-        Self { members }
+        let members: Vec<T> = iter.cloned().collect();
+        Self { members: members.into_boxed_slice() }
     }
 }
 
 impl<'a, T: Ord + Clone> From<Intersection<'a, T>> for OrdListSet<T> {
     fn from(iter: Intersection<'a, T>) -> Self {
-        let mut members: Vec<T> = iter.cloned().collect();
-        members.shrink_to_fit();
-        Self { members }
+        let members: Vec<T> = iter.cloned().collect();
+        Self { members: members.into_boxed_slice() }
     }
 }
 
 impl<'a, T: Ord + Clone> From<Difference<'a, T>> for OrdListSet<T> {
     fn from(iter: Difference<'a, T>) -> Self {
-        let mut members: Vec<T> = iter.cloned().collect();
-        members.shrink_to_fit();
-        Self { members }
+        let members: Vec<T> = iter.cloned().collect();
+        Self { members: members.into_boxed_slice() }
     }
 }
 
 impl<'a, T: Ord + Clone> From<SymmetricDifference<'a, T>> for OrdListSet<T> {
     fn from(iter: SymmetricDifference<'a, T>) -> Self {
-        let mut members: Vec<T> = iter.cloned().collect();
-        members.shrink_to_fit();
-        Self { members }
+        let members: Vec<T> = iter.cloned().collect();
+        Self { members: members.into_boxed_slice() }
     }
 }
 
@@ -120,7 +109,6 @@ impl<T: Ord> FromIterator<T> for OrdListSet<T> {
         let mut members: Vec<T> = iter.into_iter().collect();
         members.sort_unstable();
         members.dedup();
-        members.shrink_to_fit();
-        Self { members }
+        Self { members: members.into_boxed_slice() }
     }
 }

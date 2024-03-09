@@ -108,6 +108,7 @@ impl<T: Ord> FromIterator<T> for OrdListSet<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut members: Vec<T> = iter.into_iter().collect();
         members.sort_unstable();
+        members.dedup();
         Self { members: members.into_boxed_slice() }
     }
 }
