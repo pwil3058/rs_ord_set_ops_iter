@@ -5,5 +5,4 @@ workspace.resolver = "2"
 members = [
     "ord_set_iter_set_ops",
     "ord_list_set",
-    "ord_list_set_alt",
 ]
