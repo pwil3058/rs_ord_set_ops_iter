@@ -339,6 +339,9 @@ impl<T: Ord> FromIterator<T> for OrdListSet<T> {
     /// let iter = ["z", "y", "x", "b", "c", "a", "d", "e", "f", "b", "y"].iter();
     /// let set: OrdListSet<_> = iter.cloned().collect();
     /// assert_eq!(vec, set.items(..));
+    /// let iter = ["z", "y", "x", "b", "c", "a", "d", "e", "f", "b", "y"].iter();
+    /// let set = OrdListSet::from_iter(iter.cloned());
+    /// assert_eq!(vec, set.items(..));
     /// ```
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut members = Vec::new();
